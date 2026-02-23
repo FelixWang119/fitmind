@@ -70,16 +70,32 @@ async def analyze_food_with_qwen_vision(base64_image: str) -> Dict[str, Any]:
     """
     api_key = os.environ.get("QWEN_API_KEY")
     if not api_key:
-        # 如果没有API Key，则返回模拟数据
+        # 如果没有API Key，则返回模拟数据（食材列表格式）
         return {
-            "meal_name": "待识别食品",
             "meal_type": "lunch",
-            "total_calories": 350,
-            "protein_g": 20,
-            "carbs_g": 40,
-            "fat_g": 12,
-            "notes": "请配置Qwen API密钥以启用图像分析功能",
-            "suggestions": ["使用真实API密钥可以获得精确的营养分析"],
+            "items": [
+                {
+                    "name": "米饭",
+                    "grams": 150,
+                    "calories": 174,
+                    "protein": 3,
+                    "carbs": 38,
+                    "fat": 0.5,
+                },
+                {
+                    "name": "红烧肉",
+                    "grams": 100,
+                    "calories": 350,
+                    "protein": 12,
+                    "carbs": 8,
+                    "fat": 30,
+                },
+            ],
+            "total_calories": 524,
+            "total_protein": 15,
+            "total_carbs": 46,
+            "total_fat": 30.5,
+            "notes": "开发模式模拟数据",
         }
 
     url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/generation/image2text"
