@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     # Redis配置（用于缓存和会话）
     REDIS_URL: Optional[str] = None
 
+    # 文件上传配置
+    UPLOAD_DIR: str = "./uploads/meal_photos"
+    IMAGE_MAX_SIZE: int = 10 * 1024 * 1024  # 10MB
+    IMAGE_COMPRESS_QUALITY: int = 70
+
     # 日志配置
     LOG_LEVEL: str = "INFO"
 

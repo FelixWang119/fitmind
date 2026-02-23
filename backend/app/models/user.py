@@ -72,6 +72,9 @@ class User(Base):
     reward_redemptions = relationship(
         "RewardRedemption", back_populates="user", cascade="all, delete-orphan"
     )
+    calorie_goals = relationship(
+        "CalorieGoal", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, username={self.username})>"

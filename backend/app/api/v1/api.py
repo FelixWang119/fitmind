@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     exercises,
     gamification,
     habit,
+    habits,
     habit_stats,
     health,
     health_assessment,
@@ -16,6 +17,7 @@ from app.api.v1.endpoints import (
     health_reports,
     health_score,
     meals,
+    meal_checkin,
     memory,
     nutrition,
     personalized_advice,
@@ -35,7 +37,7 @@ api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(nutrition.router, prefix="/nutrition", tags=["nutrition"])
-api_router.include_router(habit.router, prefix="/habits", tags=["habits"])
+api_router.include_router(habits.router, prefix="/habits", tags=["habits"])
 api_router.include_router(habit_stats.router, prefix="/habits", tags=["habits-stats"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 
@@ -60,6 +62,11 @@ api_router.include_router(exercises.router, prefix="/exercises", tags=["exercise
 
 # 餐饮记录端点
 api_router.include_router(meals.router, prefix="/meals", tags=["meals"])
+
+# 饮食打卡端点
+api_router.include_router(
+    meal_checkin.router, prefix="/meal-checkin", tags=["meal-checkin"]
+)
 
 # 游戏化系统端点
 api_router.include_router(

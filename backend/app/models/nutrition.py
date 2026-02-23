@@ -26,8 +26,9 @@ class Meal(Base):
 
     # 餐饮基本信息
     meal_type = Column(String(50), nullable=False)  # breakfast, lunch, dinner, snack
-    name = Column(String(200), nullable=False)  # 餐名，如“早餐”、“午餐”等
+    name = Column(String(200), nullable=False)  # 餐名，如"早餐"、"午餐"等
     notes = Column(Text)  # 餐饮备注
+    photo_url = Column(String(500), nullable=True)  # 照片URL
 
     # 营养信息
     calories = Column(Integer)  # 总卡路里
