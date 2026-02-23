@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>体重管理AI助手 - 设计方向探索</title>
+    <style>
+        :root {
+            /* 颜色系统 - 基于视觉基础 */
+            --primary-blue: #4A90E2;
+            --secondary-green: #7ED321;
+            --accent-orange: #FF9500;
+            --neutral-bg: #F8F9FA;
+            --success-green: #34C759;
+            --warning-orange: #FF9500;
+            --error-red: #FF3B30;
+            --info-blue: #5AC8FA;
+            --text-primary: #1D1D1F;
+            --text-secondary: #86868B;
+            --text-tertiary: #AEAEB2;
+            --surface-white: #FFFFFF;
+            --surface-light: #F2F2F7;
+            --surface-dark: #1D1D1F;
+            
+            /* 间距系统 - 8px网格 */
+            --space-1: 8px;
+            --space-2: 16px;
+            --space-3: 24px;
+            --space-4: 32px;
+            --space-5: 40px;
+            --space-6: 48px;
+            --space-8: 64px;
+            
+            /* 字体系统 */
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            --font-h1: 32px;
+            --font-h2: 24px;
+            --font-h3: 20px;
+            --font-body-lg: 18px;
+            --font-body: 16px;
+            --font-body-sm: 14px;
+            --font-caption: 12px;
+            
+            --line-height-h1: 40px;
+            --line-height-h2: 32px;
+            --line-height-h3: 28px;
+            --line-height-body-lg: 28px;
+            --line-height-body: 24px;
+            --line-height-body-sm: 20px;
+            --line-height-caption: 16px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-family);
+            background-color: var(--neutral-bg);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-4);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: var(--space-6);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: var(--font-h1);
+            line-height: var(--line-height-h1);
+            color: var(--primary-blue);
+            margin-bottom: var(--space-2);
+        }
+        
+        .subtitle {
+            font-size: var(--font-body-lg);
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto var(--space-4);
+        }
+        
+        .exploration-guide {
+            background-color: var(--surface-white);
+            border-radius: 12px;
+            padding: var(--space-4);
+            margin-bottom: var(--space-6);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .guide-title {
+            font-size: var(--font-h3);
+            margin-bottom: var(--space-3);
+            color: var(--primary-blue);
+        }
+        
+        .criteria-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-3);
+            margin-top: var(--space-3);
+        }
+        
+        .criterion {
+            background-color: var(--surface-light);
+            padding: var(--space-3);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-blue);
+        }
+        
+        .criterion h4 {
+            font-size: var(--font-body);
+            margin-bottom: var(--space-1);
+            color: var(--text-primary);
+        }
+        
+        .criterion p {
+            font-size: var(--font-body-sm);
+            color: var(--text-secondary);
+        }
+        
+        .directions-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--space-4);
+            margin-bottom: var(--space-8);
+        }
+        
+        .direction-card {
+            background-color: var(--surface-white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .direction-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        
+        .direction-header {
+            padding: var(--space-3);
+            background-color: var(--primary-blue);
+            color: white;
+        }
+        
+        .direction-header h3 {
+            font-size: var(--font-h3);
+            margin-bottom: var(--space-1);
+        }
+        
+        .direction-tag {
+            display: inline-block;
+            background-color: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: var(--font-caption);
+            margin-right: var(--space-1);
+            margin-bottom: var(--space-1);
+        }
+        
+        .direction-preview {
+            padding: var(--space-4);
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+        
+        .mockup-element {
+            border-radius: 8px;
+            padding: var(--space-3);
+            margin-bottom: var(--space-2);
+        }
+        
+        .mockup-chat {
+            background-color: var(--surface-light);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .mockup-data {
+            background-color: var(--surface-white);
+            border: 1px solid rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .mockup-nav {
+            background-color: var(--surface-white);
+            border: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-around;
+            padding: var(--space-2);
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--surface-light);
+        }
+        
+        .nav-label {
+            font-size: var(--font-caption);
+            color: var(--text-secondary);
+        }
+        
+        .active-nav {
+            color: var(--primary-blue);
+        }
+        
+        .active-nav .nav-icon {
+            background-color: var(--primary-blue);
+        }
+        
+        .color-swatch {
+            display: flex;
+            gap: var(--space-2);
+            margin-top: var(--space-2);
+        }
+        
+        .swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+        
+        .comparison-tools {
+            background-color: var(--surface-white);
+            border-radius: 12px;
+            padding: var(--space-4);
+            margin-top: var(--space-6);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .comparison-title {
+            font-size: var(--font-h3);
+            margin-bottom: var(--space-3);
+            color: var(--primary-blue);
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-4);
+        }
+        
+        .comparison-item {
+            padding: var(--space-3);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: var(--space-4);
+            margin-top: var(--space-8);
+            border-top: 1px solid rgba(0,0,0,0.1);
+            color: var(--text-secondary);
+            font-size: var(--font-body-sm);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--space-2);
+            }
+            
+            .directions-container {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: var(--font-h2);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>体重管理AI助手 - 设计方向探索</h1>
+            <p class="subtitle">探索6个不同的视觉设计方向，每个方向都应用了我们建立的设计基础：温暖蓝色调、系统字体、8px网格系统和情感化设计原则。</p>
+        </header>
+        
+        <section class="exploration-guide">
+            <h2 class="guide-title">设计探索指南</h2>
+            <p>在探索设计方向时，请关注以下标准：</p>
+            
+            <div class="criteria-grid">
+                <div class="criterion">
+                    <h4>✅ 布局直观性</h4>
+                    <p>哪个信息层次结构最符合您的优先级？对话界面是否自然突出？</p>
+                </div>
+                <div class="criterion">
+                    <h4>✅ 交互风格</h4>
+                    <p>哪种交互风格最适合您的核心体验？是否支持自然对话流程？</p>
+                </div>
+                <div class="criterion">
+                    <h4>✅ 视觉权重</h4>
+                    <p>哪种视觉密度感觉适合您的品牌？是简洁轻量还是丰富详细？</p>
+                </div>
+                <div class="criterion">
+                    <h4>✅ 导航方法</h4>
+                    <p>哪种导航模式符合用户期望？是底部导航、侧边栏还是混合模式？</p>
+                </div>
+                <div class="criterion">
+                    <h4>✅ 组件使用</h4>
+                    <p>组件如何支持用户旅程？数据输入是否简单？反馈是否清晰？</p>
+                </div>
+                <div class="criterion">
+                    <h4>✅ 品牌一致性</h4>
+                    <p>哪个方向最能支持您的情感目标？是否传达温暖、专业和支持感？</p>
+                </div>
+            </div>
+            
+            <p style="margin-top: var(--space-3); font-style: italic; color: var(--text-secondary);">
+                提示：点击任何设计卡片查看详细信息。慢慢探索 - 这是指导我们所有设计工作的关键决策！
+            </p>
+        </section>
+        
+        <section class="directions-container">
+            <!-- 方向1: 对话中心简约 -->
+            <div class="direction-card" onclick="showDirectionDetails(1)">
+                <div class="direction-header">
+                    <h3>方向1: 对话中心简约</h3>
+                    <div>
+                        <span class="direction-tag">极简主义</span>
+                        <span class="direction-tag">对话优先</span>
+                        <span class="direction-tag">移动优化</span>
+                    </div>
+                </div>
+                <div class="direction-preview">
+                    <div class="mockup-chat">
+                        <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--primary-blue);"></div>
+                            <div>
+                                <div style="font-weight: 500;">营养师AI</div>
+                                <div style="font-size: var(--font-caption); color: var(--text-tertiary);">刚刚</div>
+                            </div>
+                        </div>
+                        <p>看到您昨天的饮食记录了，蔬菜摄入很充足！今天想聊聊运动计划吗？</p>
+                    </div>
+                    
+                    <div class="mockup-data">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-2);">
+                            <div style="font-weight: 500;">今日进度</div>
+                            <div style="color: var(--success-green); font-weight: 500;">75%</div>
+                        </div>
+                        <div style="height: 8px; background-color: var(--surface-light); border-radius: 4px; overflow: hidden;">
+                            <div style="width: 75%; height: 100%; background-color: var(--success-green);"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mockup-nav">
+                        <div class="nav-item active-nav">
+                            <div class="nav-icon"></div>
+                            <div class="nav-label">对话</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon"></div>
+                            <div class="nav-label">数据</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon"></div>
+                            <div class="nav-label">进度</div>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon"></div>
+                            <div class="nav-label">设置</div>
+                        </div>
+                    </div>
+                    
+                    <div class="color-swatch">
+                        <div class="swatch" style="background-color: var(--primary-blue);"></div>
+                        <div class="swatch" style="background-color: var(--neutral-bg);"></div>
+                        <div class="swatch" style="background-color: var(--surface-white);"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方向2: 数据驱动仪表板 -->
+            <div class="direction-card" onclick="showDirectionDetails(2)">
+                <div class="direction-header" style="background-color: var(--secondary-green);">
+                    <h3>方向2: 数据驱动仪表板</h3>
+                    <div>
+                        <span class="direction-tag">数据可视化</span>
+                        <span class="direction-tag">洞察优先</span>
+                        <span class="direction-tag">桌面优化</span>
+                    </div>
+                </div>
+                <div class="direction-preview">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-bottom: var(--space-3);">
+                        <div class="mockup-data" style="text-align: center;">
+                            <div style="font-size: var(--font-h3); font-weight: 500; color: var(--primary-blue);">-2.3kg</div>
+                            <div style="font-size: var(--font-caption); color: var(--text-secondary);">本月减重</div>
+                        </div>
+                        <div class="mockup-data" style="text-align: center;">
+                            <div style="font-size: var(--font-h3); font-weight: 500; color: var(--success-green);">85%</div>
+                            <div style="font-size: var(--font-caption); color: var(--text-secondary);">目标完成</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mockup-data">
+                        <div style="font-weight: 500; margin-bottom: var(--space-2);">健康趋势</div>
+                        <div style="height: 60px; background: linear-gradient(90deg, var(--primary-blue) 30%, var(--secondary-green) 70%); border-radius: 4px;"></div>
+                    </div>
+                    
+                    <div class="mockup-chat" style="margin-top: var(--space-2);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-1);">
+                            <div style="font-weight: 500;">AI建议</div>
+                            <div style="font-size: var(--font-caption); color: var(--text-tertiary);">查看更多</div>
+                        </div>
+                        <p style="font-size: var(--font-body-sm);">基于您的数据，建议增加蛋白质摄入...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方向3: 情感陪伴温暖 -->
+            <div class="direction-card" onclick="showDirectionDetails(3)">
+                <div class="direction-header" style="background-color: var(--accent-orange);">
+                    <h3>方向3: 情感陪伴温暖</h3>
+                    <div>
+                        <span class="direction-tag">情感化设计</span>
+                        <span class="direction-tag">温暖色调</span>
+                        <span class="direction-tag">渐进引导</span>
+                    </div>
+                </div>
+                <div class="direction-preview">
+                    <div class="mockup-chat" style="background-color: #FFF9F0; border-color: rgba(255, 149, 0, 0.2);">
+                        <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2);">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--accent-orange);"></div>
+                            <div>
+                                <div style="font-weight: 500;">陪伴AI ❤️</div>
+                                <div style="font-size: var(--font-caption); color: var(--text-tertiary);">今天辛苦了</div>
+                            </div>
+                        </div>
+                        <p>我知道今天很有挑战，但您已经坚持了3周！想聊聊今天的感受吗？</p>
+                    </div>
+                    
+                    <div style="display: flex; gap: var(--space-2); margin-top: var(--space-2);">
+                        <div style="flex: 1; text-align: center; padding: var(--space-2); background-color: rgba(255, 149, 0, 0.1); border-radius: 8px;">
+                            <div style="font-size: var(--font-body); font-weight: 500; color: var(--accent-orange);">鼓励</div>
+                        </div>
+                        <div style="flex: 1; text-align: center; padding: var(--space-2); background-color: rgba(74, 144, 226, 0.1); border-radius: 8px;">
+                            <div style="font-size: var(--font-body); font-weight: 500; color: var(--primary-blue);">建议</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: var(--space-2); font-size: var(--font-body-sm); color: var(--text-secondary); text-align: center;">
+                        "每个小进步都值得庆祝 🎉"
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方向4: 专业健康工具 -->
+            <div class="direction-card" onclick="showDirectionDetails(4)">
+                <div class="direction-header" style="background-color: #1D1D1F;">
+                    <h3>方向4: 专业健康工具</h3>
+                    <div>
+                        <span class="direction-tag">专业感</span>
+                        <span class="direction-tag">高效工作流</span>
+                        <span class="direction-tag">深度分析</span>
+                    </div>
+                </div>
+                <div class="direction-preview">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-3);">
+                        <div>
+                            <div style="font-weight: 500; font-size: var(--font-body);">今日任务</div>
+                            <div style="font-size: var(--font-caption); color: var(--text-secondary);">3项待完成</div>
+                        </div>
+                        <div style="color: var(--primary-blue); font-weight: 500;">查看全部</div>
+                    </div>
+                    
+                    <div class="mockup-data" style="margin-bottom: var(--space-2);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 500;">记录早餐</div>
+                                <div style="font-size: var(--font-caption); color: var(--text-secondary);">营养追踪</div>
+                            </div>
+                            <div style="width: 20px; height: 20px; border: 2px solid var(--surface-light); border-radius: 50%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mockup-data" style="margin-bottom: var(--space-2);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 500;">30分钟运动</div>
+                                <div style="font-size: var(--font-caption); color: var(--text-secondary);">行为目标</div>
+                            </div>
+                            <div style="width: 20px; height: 20px; border: 2px solid var(--surface-light); border-radius: 50%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: var(--space-3);">
+                        <div style="display: inline-block; padding: var(--space-2) var(--space-4); background-color: var(--primary-blue); color: white; border-radius: 20px; font-weight: 500;">快速记录</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方向5: 游戏化体验 -->
+            <div class="direction-card" onclick="showDirectionDetails(5)">
+                <div class="direction-header" style="background: linear-gradient(135deg, var(--primary-blue), var(--secondary-green));">
+                    <h3>方向5: 游戏化体验</h3>
+                    <div>
+                        <span class="direction-tag">游戏化</span>
+                        <span class="direction-tag">成就系统</span>
+                        <span class="direction-tag">社交元素</span>
+                    </div>
+                </div>
+                <div class="direction-preview">
+                    <div style="text-align: center; margin-bottom: var(--space-3);">
+                        <div style="font-size: var(--font-h3); font-weight: 500; color: var(--accent-orange);">Level 7</div>
+                        <div style="font-size: var(--font-caption); color: var(--text-secondary);">健康探险家</div>
+                    </div>
+                    
+                    <div style="position: relative; height: 80px; background-color: var(--surface-light); border-radius: 40px; overflow: hidden; margin-bottom: var(--space-3);">
+                        <div style="position: absolute; top: 0; left: 0; width: 65%; height: 100%; background: linear-gradient(90deg, var(--primary-blue), var(--secondary-green));"></div>
+                        <div style="position: absolute; top: 50%; left: 65%; transform: translate(-50%, -50%); width: 40px; height: 40px; background-color: var(--accent-orange); border-radius: 50%; border: 4px solid white;"></div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2);">
+                        <div style="text-align: center;">
+                            <div style="font-weight: 500; color: var(--primary-blue);">15</div>
+                            <div style="font-size: var(--font-caption); color: var(--text-secondary);">连续天数</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-weight: 500; color: var(--success-green);">8</div>
+                            <div style="font-size: var(--font-caption); color: var(--text-secondary);">成就徽章</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-weight: 500; color: var(--accent-orange);">3</div>
+                            <div style="font-size: var(--font-caption); color: var(--text-secondary);">进行中挑战</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 方向6: 混合自适应 -->
+            <div class="direction-card" onclick="showDirectionDetails(6)">
+                <div class="direction-header" style="background: linear-gradient(135deg, var(--primary-blue), #8B5CF6);">
+                    <h3>方向6: 混合自适应</h3>
+                    <div>
+                        <span class="direction-tag">自适应界面</span>
+                        <span class="direction-tag">角色切换</span>
+                        <span class="direction-tag">智能推荐</span>
+                    </div>
+                </div>
+                <div class="direction-preview">
+                    <div style="display: flex; gap: var(--space-2); margin-bottom: var(--space-3);">
+                        <div style="flex: 1; text-align: center; padding: var(--space-2); background-color: rgba(74, 144, 226, 0.1); border-radius: 8px; border: 2px solid var(--primary-blue);">
+                            <div style="font-weight: 500; color: var(--primary-blue);">营养师</div>
+                        </div>
+                        <div style="flex: 1; text-align: center; padding: var(--space-2); background-color: rgba(126, 211, 33, 0.1); border-radius: 8px;">
+                            <div style="font-weight: 500; color: var(--text-secondary);">教练</div>
+                        </div>
+                        <div style="flex: 1; text-align: center; padding: var(--space-2); background-color: rgba(255, 149, 0, 0.1); border-radius: 8px;">
+                            <div style="font-weight: 500; color: var(--text-secondary);">陪伴</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mockup-chat">
+                        <p>检测到您可能需要营养建议，已切换到营养师模式。您昨天的蛋白质摄入不足，建议今天增加...</p>
+                    </div>
+                    
+                    <div style="margin-top: var(--space-2); font-size: var(--font-body-sm); color: var(--text-secondary);">
+                        <div style="display: flex; align-items: center; gap: var(--space-1);">
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--success-green);"></div>
+                            <div>AI已自适应调整到最适合的模式</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="comparison-tools">
+            <h2 class="comparison-title">设计方向比较</h2>
+            <div class="comparison-grid">
+                <div class="comparison-item">
+                    <h4>最适合的用户类型</h4>
+                    <p><strong>方向1、3</strong>：技术敏感用户（李阿姨）</p>
+                    <p><strong>方向2、4</strong>：技术熟练用户（张明）</p>
+                    <p><strong>方向5、6</strong>：寻求创新体验的用户</p>
+                </div>
+                <div class="comparison-item">
+                    <h4>核心优势</h4>
+                    <p><strong>方向1</strong>：极简、专注对话</p>
+                    <p><strong>方向2</strong>：数据洞察、专业分析</p>
+                    <p><strong>方向3</strong>：情感支持、温暖体验</p>
+                    <p><strong>方向4</strong>：高效工作流、任务管理</p>
+                    <p><strong>方向5</strong>：参与度、游戏化激励</p>
+                    <p><strong>方向6</strong>：智能适应、个性化</p>
+                </div>
+                <div class="comparison-item">
+                    <h4>实施复杂度</h4>
+                    <p><strong>低</strong>：方向1、3</p>
+                    <p><strong>中</strong>：方向2、4</p>
+                    <p><strong>高</strong>：方向5、6</p>
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>体重管理AI助手 - UX设计方向探索 | 生成时间: 2026-02-21</p>
+            <p>基于情感设计原则：被理解感、希望感、掌控感、陪伴感</p>
+        </footer>
+    </div>
+    
+    <script>
+        function showDirectionDetails(directionNumber) {
+            const directionNames = [
+                "对话中心简约",
+                "数据驱动仪表板", 
+                "情感陪伴温暖",
+                "专业健康工具",
+                "游戏化体验",
+                "混合自适应"
+            ];
+            
+            const directionDescriptions = [
+                "极简主义设计，对话界面占据90%屏幕空间。适合寻求简单、专注体验的用户，特别是技术敏感的中老年用户。",
+                "数据可视化优先，提供深度健康洞察。适合喜欢数据分析、寻求专业指导的技术熟练用户。",
+                "温暖情感化设计，强调陪伴和支持。适合需要情感鼓励、在减重旅程中感到孤独的用户。",
+                "专业工具导向，高效任务管理和工作流。适合喜欢结构化方法、寻求明确指导的用户。",
+                "游戏化元素驱动，成就系统和挑战激励。适合需要外部动机、享受游戏化体验的用户。",
+                "智能自适应界面，基于用户情境动态调整。适合寻求个性化、智能体验的现代用户。"
+            ];
+            
+            const directionStrengths = [
+                ["极简易用", "专注核心体验", "低学习成本", "移动优化"],
+                ["深度洞察", "专业可信度", "数据驱动决策", "桌面友好"],
+                ["情感连接", "温暖体验", "持续鼓励", "危机支持"],
+                ["高效工作流", "明确指导", "结构化方法", "专业感"],
+                ["高参与度", "持续激励", "社交元素", "趣味性"],
+                ["个性化", "智能适应", "多模式融合", "未来感"]
+            ];
+            
+            alert(`方向${directionNumber}: ${directionNames[directionNumber-1]}\n\n${directionDescriptions[directionNumber-1]}\n\n核心优势:\n${directionStrengths[directionNumber-1].map(s => `• ${s}`).join('\n')}\n\n点击确定后请告诉我您的选择偏好。`);
+        }
+        
+        // 页面加载时显示探索指南
+        window.addEventListener('load', function() {
+            console.log('设计方向探索页面已加载');
+            console.log('请仔细探索每个设计方向，考虑哪种最适合您的目标用户和情感目标。');
+        });
+    </script>
+</body>
+</html>

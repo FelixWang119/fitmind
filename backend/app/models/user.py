@@ -1,0 +1,77 @@
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+from app.core.database import Base
+
+
+class User(Base):
+    """用户模型"""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    username = Column(String(100), unique=True, index=True, nullable=True)  # 可选字段
+    full_name = Column(String(200))
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+
+    # 用户信息
+    age = Column(Integer)
+    gender = Column(String(10))  # male, female, other
+    height = Column(Integer)  # 厘米
+    initial_weight = Column(Integer)  # 克
+    target_weight = Column(Integer)  # 克
+    activity_level = Column(
+        String(50)
+    )  # sedentary, light, moderate, active, very_active
+    dietary_preferences = Column(Text)  # JSON字符串存储饮食偏好
+
+    # 时间戳
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    last_login = Column(DateTime(timezone=True))
+
+    # 关系
+    health_records = relationship(
+        "HealthRecord", back_populates="user", cascade="all, delete-orphan"
+    )
+    conversations = relationship(
+        "Conversation", back_populates="user", cascade="all, delete-orphan"
+    )
+    habits = relationship("Habit", back_populates="user", cascade="all, delete-orphan")
+    habit_goals = relationship(
+        "HabitGoal", back_populates="user", cascade="all, delete-orphan"
+    )
+    meals = relationship("Meal", back_populates="user", cascade="all, delete-orphan")
+    water_intakes = relationship(
+        "WaterIntake", back_populates="user", cascade="all, delete-orphan"
+    )
+    health_assessments = relationship(
+        "HealthAssessment", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    # 记忆系统关系
+    long_term_memories = relationship(
+        "UserLongTermMemory", back_populates="user", cascade="all, delete-orphan"
+    )
+    context_summaries = relationship(
+        "ContextSummary", back_populates="user", cascade="all, delete-orphan"
+    )
+    habit_patterns = relationship(
+        "HabitPattern", back_populates="user", cascade="all, delete-orphan"
+    )
+    data_associations = relationship(
+        "DataAssociation", back_populates="user", cascade="all, delete-orphan"
+    )
+    password_reset_tokens = relationship(
+        "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
+    )
+    reward_redemptions = relationship(
+        "RewardRedemption", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email={self.email}, username={self.username})>"

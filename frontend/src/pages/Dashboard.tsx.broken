@@ -1,0 +1,792 @@
+import { useEffect, useState } from 'react';
+import {
+  Activity,
+  Target,
+  Flame,
+  Droplets,
+  TrendingDown,
+  Calendar,
+  ChevronRight,
+  Heart,
+  TrendingUp,
+  Eye,
+  EyeOff,
+  Award,
+  Utensils,
+  MessageSquare,
+  CheckCircle
+} from 'lucide-react';
+import { Bar, Line, Doughnut } from 'react-chartjs-2';
+import { 
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+import { api } from '../api/client';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+interface DashboardData {
+  greeting?: string;
+  daily_tip?: {
+    title: string;
+    content: string;
+  };
+  progress_summary?: {
+    weight_progress: number;
+    habit_completion: number;
+    current_level: number;
+    total_points: number;
+  };
+  next_steps?: any[];
+  overview?: {
+    total_weight_loss: number;
+    bmi: number;
+    weekly_average: number;
+    days_tracked: number;
+    active_habits: number;
+    streak_days: number;
+    total_points: number;
+  };
+  quick_stats?: {
+    today_calories: number;
+    daily_step_count: number;
+    water_intake: number;
+    sleep_hours: number;
+  };
+  chart_data?: {
+    weight_trend: {
+      dates: string[];
+      weights: number[];
+    };
+    nutrition_breakdown: {
+      carbs: number;
+      protein: number;
+      fat: number;
+    };
+  };
+  emotional_data?: {
+    stress_level: number;
+    mood_score: number;
+    week_overview: Array<{
+      day: string;
+      mood: number;
+      stress: number;
+    }>;
+  };
+  badges?: Array<{
+    id: number;
+    name: string;
+    description: string;
+    earned: boolean;
+    icon: string;
+  }>;
+}
+
+interface StatCardProps {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  color: 'blue' | 'green' | 'purple' | 'orange';
+}
+
+function StatCard({ icon: Icon, label, value, color }: StatCardProps) {
+  const colorClasses = {
+    blue: 'bg-blue-50 text-blue-600',
+    green: 'bg-green-50 text-green-600',
+    purple: 'bg-purple-50 text-purple-600',
+    orange: 'bg-orange-50 text-orange-600',
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+      <div className={`w-10 h-10 rounded-xl ${colorClasses[color]} flex items-center justify-center mb-3`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <p className="text-sm text-gray-500 mb-1">{label}</p>
+      <p className="text-xl font-bold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
+interface QuickActionButtonProps {
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+  color: string;
+}
+
+function QuickActionButton({ icon: Icon, label, onClick, color }: QuickActionButtonProps) {
+  const colorMap: Record<string, string> = {
+    blue: 'bg-blue-50 hover:bg-blue-100 text-blue-600',
+    green: 'bg-green-50 hover:bg-green-100 text-green-600',
+    cyan: 'bg-cyan-50 hover:bg-cyan-100 text-cyan-600',
+    orange: 'bg-orange-50 hover:bg-orange-100 text-orange-600',
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-colors ${colorMap[color] || colorMap.blue}`}
+    >
+      <Icon className="w-6 h-6 mb-2" />
+      <span className="text-sm font-medium">{label}</span>
+    </button>
+  );
+}
+
+export default function Dashboard() {
+  const [data, setData] = useState<DashboardData>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      // 获取仪表板概览数据
+      const dashboardData = await api.getDashboardOverview();
+      // 获取快速统计数据
+      const quickStatsData = await api.getQuickStats();
+      // 获取AI建议数据
+      const aiSuggestionsData = await api.getAiSuggestions();
+      // 获取趋势数据
+      const trendsData = await api.getTrends();
+      
+      // 合并数据，同时适配图表数据的格式
+      setData({
+        ...dashboardData,
+        quickStats: quickStatsData,
+        ai_suggestions: aiSuggestionsData?.suggestions || [],
+        trends: trendsData,
+        // Map trend data to the expected chart_data structure
+        chart_data: {
+          weight_trend: {
+            dates: trendsData?.weight_trend?.data?.map((item: any) => item.date.split('-')[1] + '-' + item.date.split('-')[2]) || ['周一', '周二', '周三', '周四', '周五', '周六', '周日'], // Simple MM-DD format
+            weights: trendsData?.weight_trend?.data?.map((item: any) => item.weight_kg) || [72.3, 72.1, 71.9, 71.8, 71.6, 71.5, 71.4]
+          },
+          nutrition_breakdown: {
+            carbs: dashboardData?.chart_data?.nutrition_breakdown?.carbs || 230,
+            protein: dashboardData?.chart_data?.nutrition_breakdown?.protein || 150,
+            fat: dashboardData?.chart_data?.nutrition_breakdown?.fat || 78
+          }
+        }
+      });
+    } catch (err) {
+      setError('加载数据失败');
+      console.error(err);
+      
+      // 如果API调用失败，使用模拟数据
+      setData({
+        greeting: '欢迎回来，测试用户！',
+        daily_tip: {
+          title: '今日运动建议',
+          content: '今天是健身的好时间！尝试安排30分钟的有氧运动，比如快走或骑自行车。您的水分摄入略低，记得多喝水保持身体水分平衡。'
+        },
+        progress_summary: {
+          weight_progress: 5.2,
+          habit_completion: 75,
+          current_level: 5,
+          total_points: 1250
+        },
+        overview: {
+          total_weight_loss: 5.2,
+          bmi: 22.4,
+          weekly_average: 0.8,
+          days_tracked: 24,
+          active_habits: 8,
+          streak_days: 12,
+          total_points: 1250
+        },
+        quick_stats: {
+          today_calories: 1850,
+          daily_step_count: 8542,
+          water_intake: 1800,
+          sleep_hours: 7.5
+        },
+        chart_data: {
+          weight_trend: {
+            dates: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+            weights: [72.3, 72.1, 71.9, 71.8, 71.6, 71.5, 71.4]
+          },
+          nutrition_breakdown: {
+            carbs: 230,
+            protein: 150,
+            fat: 78
+          }
+        },
+        emotional_data: {
+          stress_level: 6,
+          mood_score: 8,
+          week_overview: [
+            { day: '周一', mood: 8, stress: 5 },
+            { day: '周二', mood: 7, stress: 6 },
+            { day: '周三', mood: 9, stress: 4 },
+            { day: '周四', mood: 6, stress: 7 },
+            { day: '周五', mood: 8, stress: 5 },
+            { day: '周六', mood: 9, stress: 3 },
+            { day: '周日', mood: 8, stress: 4 }
+          ]
+        },
+        badges: [
+          { id: 1, name: '早起鸟', description: '连续早起一周', earned: true, icon: '🌅' },
+          { id: 2, name: '水水水', description: '每日八杯水', earned: true, icon: '💧' },
+          { id: 3, name: '夜宵戒断', description: '21天不进夜宵', earned: false, icon: '🌙' },
+          { id: 4, name: '蔬果达人', description: '每日蔬果5份', earned: true, icon: '🥗' },
+          { id: 5, name: '连续记录', description: '健康记录不间断', earned: true, icon: '📝' },
+          { id: 6, name: '突破瓶颈', description: '突破体重平台期', earned: false, icon: '📈' }
+        ]
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-12">
+      {/* 头部 */}
+      <header className="bg-gradient-to-r from-primary-600 to-secondary-600 text-white p-6 shadow-md">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold">{data.greeting || '欢迎回来！'}</h1>
+              <p className="text-primary-100 mt-1">今日健康进度概览</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="font-semibold">{new Date().toLocaleDateString('zh-CN', { weekday: 'long' })}</p>
+                <p className="text-sm opacity-80">{new Date().toLocaleDateString('zh-CN')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* 主内容区 */}
+      <main className="max-w-7xl mx-auto p-4 sm:p-6">
+        {/* 快速统计 第一行*/}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white rounded-xl shadow p-6 flex items-center">
+            <div className="bg-green-100 p-3 rounded-full mr-4">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-gray-500 text-sm">本周减重</p>
+              <p className="text-2xl font-bold text-gray-800">{data.overview?.weekly_average ? data.overview.weekly_average.toFixed(2) : 0.8} kg</p>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow p-6 flex items-center">
+            <div className="bg-blue-100 p-3 rounded-full mr-4">
+              <Target className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-gray-500 text-sm">当前BMI</p>
+              <p className="text-2xl font-bold text-gray-800">{data.overview?.bmi || 22.4}</p>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow p-6 flex items-center">
+            <div className="bg-purple-100 p-3 rounded-full mr-4">
+              <Calendar className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-gray-500 text-sm">连续记录</p>
+              <p className="text-2xl font-bold text-gray-800">{data.overview?.streak_days || 12} 天</p>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow p-6 flex items-center">
+            <div className="bg-yellow-100 p-3 rounded-full mr-4">
+              <Award className="h-6 w-6 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-gray-500 text-sm">总积分</p>
+              <p className="text-2xl font-bold text-gray-800">{data.overview?.total_points || 1250}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 快捷操作按钮 */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">快捷操作</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <QuickActionButton
+              icon={TrendingDown}
+              label="记录体重"
+              onClick={() => alert('记录体重功能即将上线！')}
+              color="blue"
+            />
+            <QuickActionButton
+              icon={MessageSquare}
+              label="开始对话"
+              onClick={() => alert('AI对话功能即将上线！')}
+              color="green"
+            />
+            <QuickActionButton
+              icon={CheckCircle}
+              label="打卡习惯"
+              onClick={() => alert('习惯打卡功能即将上线！')}
+              color="cyan"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+          {/* 左侧主要内容 */}
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
+            <div className="bg-white rounded-xl shadow p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-800">体重趋势</h2>
+                <button 
+                  className="flex items-center text-sm text-primary-600"
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  显示数值
+                </button>
+              </div>
+              
+              <div className="h-48 sm:h-64 md:h-80">
+                <Line 
+                  data={{
+                    labels: data.chart_data?.weight_trend.dates || ['1月', '2月', '3月', '4月', '5月', '6月', '7月'],
+                    datasets: [{
+                      label: '体重 (kg)',
+                      data: data.chart_data?.weight_trend.weights || [75.2, 74.8, 74.5, 74.2, 73.8, 73.2, 72.8],
+                      borderColor: '#4F46E5',
+                      backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                      tension: 0.4,
+                      fill: true
+                    }]
+                  }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      interaction: {
+                        intersect: false,
+                        mode: 'index'
+                      },
+                      plugins: {
+                        legend: {
+                          position: 'top',
+                        },
+                        tooltip: {
+                          enabled: true 
+                        }
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: false
+                        }
+                      }
+                    }}
+                />
+              </div>
+            </div>
+
+            {/* 今日摘要 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              {/* 营养概况 */}
+              <div className="bg-white rounded-xl shadow p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
+                  <Utensils className="h-4 sm:h-5 w-4 sm:w-5 mr-2 text-green-600" /> 
+                  今日营养概况
+                </h3>
+                
+                <div className="flex justify-center">
+                  <Doughnut 
+                    data={{
+                      labels: ['碳水化合物', '蛋白质', '脂肪'],
+                      datasets: [{
+                        data: [
+                          data.chart_data?.nutrition_breakdown.carbs || 230,
+                          data.chart_data?.nutrition_breakdown.protein || 150, 
+                          data.chart_data?.nutrition_breakdown.fat || 78
+                        ],
+                        backgroundColor: ['#818CF8', '#60A5FA', '#FBBF24'],
+                        borderWidth: 0
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'bottom',
+                          labels: {
+                            pointStyle: 'circle',
+                            usePointStyle: true
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                
+                <div className="mt-3 sm:mt-4 grid grid-cols-3 gap-2 sm:gap-4 text-center">
+                  <div>
+                    <p className="text-xl font-bold text-indigo-600">{data.chart_data?.nutrition_breakdown.carbs || 230}g</p>
+                    <p className="text-xs sm:text-sm text-gray-500">碳水</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-blue-500">{data.chart_data?.nutrition_breakdown.protein || 150}g</p>
+                    <p className="text-xs sm:text-sm text-gray-500">蛋白</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-yellow-500">{data.chart_data?.nutrition_breakdown.fat || 78}g</p>
+                    <p className="text-xs sm:text-sm text-gray-500">脂肪</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 情绪状态 */}
+                <div className="bg-white rounded-xl shadow p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
+                  <Heart className="h-5 w-5 mr-2 text-rose-600" /> 
+                  情绪健康
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-700">压力水平</span>
+                      <span className="text-sm font-medium text-gray-700">{data.emotional_data?.stress_level || 6}/10</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-red-600 h-2.5 rounded-full" 
+                        style={{ width: `${(data.emotional_data?.stress_level || 6) * 10}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-700">心情指数</span>
+                      <span className="text-sm font-medium text-gray-700">{data.emotional_data?.mood_score || 8}/10</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-green-500 h-2.5 rounded-full" 
+                        style={{ width: `${(data.emotional_data?.mood_score || 8) * 10}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 情绪周趋势 */}
+                <div className="mt-6">
+                  <p className="text-sm font-medium text-gray-700 mb-2">一周情绪趋势</p>
+                  <div className="flex justify-between">
+                    {(data.emotional_data?.week_overview || [
+                      { day: '周一', mood: 8, stress: 5 },
+                      { day: '周二', mood: 7, stress: 6 },
+                      { day: '周三', mood: 9, stress: 4 },
+                      { day: '周四', mood: 6, stress: 7 },
+                      { day: '周五', mood: 8, stress: 5 },
+                      { day: '周六', mood: 9, stress: 3 },
+                      { day: '周日', mood: 8, stress: 4 }
+                    ]).map((day, index) => (
+                      <div key={index} className="flex flex-col items-center">
+                        <span className="text-xs text-gray-500">{day.day.substring(0, 1)}</span>
+                        <div className="w-8 h-16 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                          <div 
+                            className="w-full bg-gradient-to-t from-green-400 to-green-600 rounded-full"
+                            style={{ height: `${day.mood * 10}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 习惯追踪 */}
+            <div className="bg-white rounded-xl shadow p-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-3">习惯追踪</h2>
+              <p className="text-gray-600 mb-4">您当前有 {data.overview?.active_habits || 8} 个活动中的习惯</p>
+              
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                {/* 习惯完成率图表 */}
+                <div>
+                 <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-2 sm:mb-3">习惯完成率</h3>
+                   <div className="w-40 h-40 mx-auto sm:w-48 sm:h-48">
+                    <Doughnut
+                      data={{
+                        labels: ['已完成', '未完成'],
+                        datasets: [
+                          {
+                            data: [
+                              data.progress_summary?.habit_completion || 75,
+                              100 - (data.progress_summary?.habit_completion || 75)
+                            ],
+                            backgroundColor: [
+                              'rgba(34, 197, 94, 0.8)',  // 绿色 - 已完成
+                              'rgba(229, 231, 235, 0.8)' // 灰色 - 未完成
+                            ],
+                            borderColor: [
+                              'rgb(34, 197, 94)',
+                              'rgb(229, 231, 235)'
+                            ],
+                            borderWidth: 1,
+                            cutout: '70%'
+                          }
+                        ]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                          legend: {
+                            display: false
+                          },
+                          tooltip: {
+                            callbacks: {
+                              label: function(context) {
+                                return `${context.label}: ${context.raw}%`;
+                              }
+                            }
+                          }
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-3xl font-bold text-gray-800">
+                        {data.progress_summary?.habit_completion || 75}%
+                      </span>
+                      <span className="text-sm text-gray-500">完成率</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 习惯列表 */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-3">今日习惯</h3>
+                  <div className="space-y-3">
+                    {[
+                      { name: '健康早餐', completed: true },
+                      { name: '每日八杯水', completed: true },
+                      { name: '30分钟运动', completed: false },
+                      { name: '早睡早起', completed: true }
+                    ].map((habit, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center">
+                          <div className={`w-3 h-3 rounded-full mr-3 ${habit.completed ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                          <span className="text-gray-700">{habit.name}</span>
+                        </div>
+                        <button className={`px-3 py-1 rounded text-sm ${habit.completed ? 'bg-green-100 text-green-700' : 'bg-primary-600 text-white'}`}>
+                          {habit.completed ? '已完成' : '完成'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* 右侧边栏 */}
+          <div className="space-y-6 sm:space-y-8">
+            {/* 今日数据 */}
+            <div className="bg-white rounded-xl shadow p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">今日快照</h3>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b">
+                  <span className="text-gray-600">摄入卡路里</span>
+                  <span className="font-semibold">{data.quick_stats?.today_calories || 1850} kcal</span>
+                </div>
+                
+                <div className="flex justify-between items-center pb-3 border-b">
+                  <span className="text-gray-600">步数</span>
+                  <span className="font-semibold">{(data.quick_stats?.daily_step_count || 8542).toLocaleString()}</span>
+                </div>
+                
+                <div className="flex justify-between items-center pb-3 border-b">
+                  <span className="text-gray-600">饮水量</span>
+                  <span className="font-semibold">{data.quick_stats?.water_intake || 1800} ml</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">睡眠时长</span>
+                  <span className="font-semibold">{data.quick_stats?.sleep_hours || 7.5} 小时</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Daily Tips and AI Suggestions */}
+            {(data.daily_tip || (data.ai_suggestions && data.ai_suggestions.length > 0)) && (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-100">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800">AI健康建议</h3>
+                    <p className="text-gray-600 text-xs sm:text-sm mt-1">
+                      基于您的最新数据，AI为您定制的健康建议
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Display daily tip if available */}
+                {data.daily_tip && (
+                  <div className="mb-4">
+                    <div className="bg-white p-4 rounded-lg mt-4">
+                      <p className="text-gray-800 text-sm">
+                        {data.daily_tip.content ||
+                          "今天是健身的好时间！尝试30分钟有氧运动，如快走或自行车。您今天的水分摄入略低，记得补水以维持新陈代谢。"}
+                      </p>
+                    </div>
+                    
+                    <div className="mt-4 flex space-x-2">
+                      <button 
+                        onClick={() => alert('已标记为已完成')}
+                        className="flex-1 bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors"
+                      >
+                        ✓ 标记完成
+                      </button>
+                      <button 
+                        onClick={() => alert('已收藏此建议')}
+                        className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors"
+                      >
+                        ♡ 收藏
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Display additional AI suggestions if available */}
+                {data.ai_suggestions && data.ai_suggestions.length > 0 && (
+                  <div className="space-y-3">
+                    {data.ai_suggestions.map((suggestion: any, idx: number) => (
+                      <div key={`suggestion-${idx}`} className="bg-white p-3 rounded-lg">
+                        <p className="text-gray-800 text-sm">{suggestion.title || suggestion.content || suggestion.advice || `推荐建议 ${idx + 1}`}</p>
+                        
+                        <div className="mt-2 flex space-x-2">
+                          <button 
+                            onClick={() => alert(`已标记建议完成: ${idx + 1}`)}
+                            className="flex-1 bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            ✓ 标记
+                          </button>
+                          <button 
+                            onClick={() => alert(`已收藏建议: ${idx + 1}`)}
+                            className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            ♡ 收藏  
+                          </button>
+                          <button 
+                            onClick={() => alert(`执行建议: ${idx + 1}`)}
+                            className="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            一键执行
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center">
+                <Award className="h-4 sm:h-5 w-4 sm:w-5 mr-2 text-yellow-600" /> 
+                我的徽章
+              </h3>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                {(data.badges || []).slice(0, 6).map((badge: any, index: number) => (
+                  <div 
+                    key={badge.id || index} 
+                    className={`flex flex-col items-center p-2 rounded-lg ${
+                      badge.earned ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50 opacity-60'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      badge.earned ? 'bg-yellow-100' : 'bg-gray-200'
+                    }`}>
+                      <span className="text-lg"> {(badge.icon && typeof badge.icon === 'string') ? badge.icon : '🏆'}</span>
+                    </div>
+                    <span className="text-xs mt-1 text-center">{badge.name || `徽章 ${index + 1}`}</span>
+                  </div>
+                ))}
+                {((data.badges || []).length === 0) && [0,1,2,3,4,5].map((_, index) => (
+                  <div 
+                    key={`empty-${index}`} 
+                    className="flex flex-col items-center p-2 rounded-lg bg-gray-50 opacity-60"
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-200">
+                      <span className="text-lg"> {'🏆'}</span>
+                    </div>
+                    <span className="text-xs mt-1 text-center">{["早起鸟", "水水水", "夜宵戒断", "蔬果达人", "连续记录", "突破瓶颈"][index]}</span>
+                  </div>
+                ))}
+              </div>
+              
+              <button className="mt-4 w-full text-center text-sm text-primary-600">
+                查看全部
+              </button>
+            </div>
+            
+            {/* Quick Actions */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">快捷操作</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <button
+                  className="flex flex-col items-center justify-center p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors"
+                >
+                  <Activity className="w-5 h-5 mb-1" />
+                  <span className="text-xs font-medium">记录体重</span>
+                </button>
+                <button
+                  className="flex flex-col items-center justify-center p-2 sm:p-3 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl transition-colors"
+                >
+                  <Calendar className="w-5 h-5 mb-1" />
+                  <span className="text-xs font-medium">完成习惯</span>
+                </button>
+                <button
+                  className="flex flex-col items-center justify-center p-2 sm:p-3 bg-cyan-50 hover:bg-cyan-100 text-cyan-600 rounded-xl transition-colors"
+                >
+                  <Droplets className="w-5 h-5 mb-1" />
+                  <span className="text-xs font-medium">记录饮食</span>
+                </button>
+                <button
+                  className="flex flex-col items-center justify-center p-2 sm:p-3 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl transition-colors"
+                >
+                  <Flame className="w-5 h-5 mb-1" />
+                  <span className="text-xs font-medium">情感签到</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
