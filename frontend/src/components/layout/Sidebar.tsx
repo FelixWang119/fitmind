@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   User,
@@ -30,7 +30,21 @@ const navigation = [
 ];
 
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    // 从 localStorage 获取初始状态，这样用户重新访问时保持之前的展开/收起状态
+    const saved = localStorage.getItem('sidebar-collapsed');
+    return saved === 'true' || false;
+  });
+
+  // 当状态变化时，保存到 localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', collapsed.toString());
+  }, [collapsed]);
+
+  // 使用 document.documentElement 来更新一个 CSS 变量，这样主内容区可以响应
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-width', collapsed ? '80px' : '256px');
+  }, [collapsed]);
 
   return (
     <>

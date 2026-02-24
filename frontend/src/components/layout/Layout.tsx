@@ -26,7 +26,12 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
-      <div className="flex-1 flex flex-col lg:ml-64">
+      <div  
+        className="flex-1 flex flex-col"
+        style={{ 
+          marginLeft: 'var(--sidebar-width, 256px)',
+        }}
+      >
         <Header />
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto">
