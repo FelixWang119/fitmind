@@ -1,9 +1,9 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.v1.endpoints.auth import get_current_active_user
 from app.core.database import get_db
@@ -27,7 +27,7 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("/meals", response_model=List[MealSchema])
+@router.get("", response_model=List[MealSchema])
 async def get_meals(
     skip: int = 0,
     limit: int = 100,
@@ -45,13 +45,126 @@ async def get_meals(
     if end_date:
         query = query.filter(Meal.meal_datetime <= end_date)
 
-    # 获取记录
-    meals = query.order_by(Meal.meal_datetime.desc()).offset(skip).limit(limit).all()
+    # 获取记录（包含餐品项目）
+    meals = (
+        query.options(joinedload(Meal.meal_items))
+        .order_by(Meal.meal_datetime.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     return meals
 
 
-@router.get("/meals/{meal_id}", response_model=MealSchema)
+@router.get("/daily-nutrition-summary", response_model=DailyNutritionSummary)
+async def get_daily_nutrition_summary(
+    target_date: date = Query(default=None, description="目标日期"),
+    current_user: UserModel = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """获取每日营养摘要"""
+    if not target_date:
+        target_date = datetime.today().date()
+
+    start_date = datetime.combine(target_date, datetime.min.time()).replace(
+        tzinfo=timezone.utc
+    )
+    end_date = datetime.combine(
+        target_date + timedelta(days=1), datetime.min.time()
+    ).replace(tzinfo=timezone.utc)
+
+    # 获取用户当日的餐食记录（包含食材详情）
+    meals = (
+        db.query(Meal)
+        .options(joinedload(Meal.meal_items))
+        .filter(
+            Meal.user_id == current_user.id,
+            Meal.meal_datetime >= start_date,
+            Meal.meal_datetime < end_date,
+        )
+        .all()
+    )
+
+    # 安全地获取营养值的辅助函数
+    def safe_get_nutrition_value(value):
+        """安全地获取营养值，处理None和SQLAlchemy Column对象"""
+        if value is None:
+            return 0.0
+
+        # 如果是SQLAlchemy Column对象，尝试获取其值
+        try:
+            # 检查是否是SQLAlchemy Column对象
+            if hasattr(value, "__class__") and "Column" in str(value.__class__):
+                # 对于Column对象，我们无法直接获取值，返回0
+                return 0.0
+
+            # 尝试转换为浮点数
+            return float(value)
+        except (TypeError, ValueError, AttributeError):
+            # 如果转换失败，返回0
+            return 0.0
+
+    # 计算总营养值 - 使用更安全的方式处理可能为None或Column对象的值
+    total_calories = 0.0
+    total_protein = 0.0
+    total_carbs = 0.0
+    total_fat = 0.0
+
+    meal_count = 0
+    meal_schemas = []
+
+    for meal in meals:
+        meal_count += 1
+        # 转换 SQLAlchemy 模型为 Pydantic 模型
+        meal_schema = MealSchema.model_validate(meal)
+        meal_schemas.append(meal_schema)
+
+        # 累加营养值
+        total_calories += safe_get_nutrition_value(meal.calories)
+        total_protein += safe_get_nutrition_value(meal.protein)
+        total_carbs += safe_get_nutrition_value(meal.carbs)
+        total_fat += safe_get_nutrition_value(meal.fat)
+
+    # 构造返回数据 - 已经是浮点数，直接使用
+    total_calories_float = total_calories
+    total_protein_float = total_protein
+    total_carbs_float = total_carbs
+    total_fat_float = total_fat
+
+    summary = DailyNutritionSummary(
+        date=target_date.isoformat(),
+        total_calories=total_calories_float,
+        total_protein=total_protein_float,
+        total_carbs=total_carbs_float,
+        total_fat=total_fat_float,
+        meal_count=meal_count,
+        meals=meal_schemas,
+    )
+
+    logger.info("Daily summary retrieved", user_id=current_user.id, date=target_date)
+
+    # Debug: log what we're returning
+    logger.debug(
+        "Summary structure",
+        has_meals=hasattr(summary, "meals"),
+        meals_count=len(summary.meals) if hasattr(summary, "meals") else 0,
+    )
+    if hasattr(summary, "meals") and summary.meals:
+        first_meal = summary.meals[0]
+        logger.debug(
+            "First meal structure",
+            has_items=hasattr(first_meal, "items"),
+            items_count=len(first_meal.items) if hasattr(first_meal, "items") else 0,
+        )
+        # Convert to dict to see field names
+        meal_dict = first_meal.model_dump()
+        logger.debug("First meal dict keys", keys=str(list(meal_dict.keys())))
+
+    return summary
+
+
+@router.get("/{meal_id}", response_model=MealSchema)
 async def get_meal(
     meal_id: int,
     current_user: UserModel = Depends(get_current_active_user),
@@ -60,6 +173,7 @@ async def get_meal(
     """获取特定的餐食记录"""
     meal = (
         db.query(Meal)
+        .options(joinedload(Meal.meal_items))
         .filter(Meal.id == meal_id, Meal.user_id == current_user.id)
         .first()
     )
@@ -72,7 +186,7 @@ async def get_meal(
     return meal
 
 
-@router.post("/meals", response_model=MealSchema, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=MealSchema, status_code=status.HTTP_201_CREATED)
 async def create_meal(
     meal_data: MealCreate,
     current_user: UserModel = Depends(get_current_active_user),
@@ -113,15 +227,14 @@ async def create_meal(
         name=meal_data.name,
         meal_datetime=meal_data.meal_datetime,
         notes=meal_data.notes,
-        calories=total_calories,
-        protein=total_proteins,
-        carbs=total_carbs,
-        fat=total_fat,
+        calories=int(total_calories) if total_calories else 0,
+        protein=int(total_proteins) if total_proteins else 0,
+        carbs=int(total_carbs) if total_carbs else 0,
+        fat=int(total_fat) if total_fat else 0,
     )
 
     db.add(meal)
-    db.commit()
-    db.refresh(meal)
+    db.flush()  # 获取meal.id但不提交事务
 
     # 如果提供餐品项目，一并创建
     if meal_data.items:
@@ -143,12 +256,21 @@ async def create_meal(
     db.commit()
     db.refresh(meal)
 
+    # 重新查询meal以加载meal_items关系
+    # 使用joinedload确保关系被加载
+    meal_with_items = (
+        db.query(Meal)
+        .options(joinedload(Meal.meal_items))
+        .filter(Meal.id == meal.id)
+        .first()
+    )
+
     logger.info("Meal created", meal_id=meal.id, user_id=current_user.id)
 
-    return meal
+    return meal_with_items
 
 
-@router.put("/meals/{meal_id}", response_model=MealSchema)
+@router.put("/{meal_id}", response_model=MealSchema)
 async def update_meal(
     meal_id: int,
     meal_update: MealUpdate,
@@ -169,18 +291,55 @@ async def update_meal(
 
     # 更新字段
     update_data = meal_update.model_dump(exclude_unset=True)
+
+    # 分离 items 和其他字段
+    items_data = update_data.pop("items", None)
+
+    # 更新基本字段
     for field, value in update_data.items():
         setattr(meal, field, value)
 
+    # 处理 items 的更新
+    if items_data is not None:
+        # 删除现有的 meal_items
+        for existing_item in meal.meal_items:
+            db.delete(existing_item)
+        db.flush()
+
+        # 创建新的 meal_items
+        if items_data:
+            for item_data in items_data:
+                meal_item = MealItem(
+                    meal_id=meal.id,
+                    name=item_data.get("name", "未知食材"),
+                    serving_size=item_data.get("serving_size")
+                    or item_data.get("grams"),
+                    serving_unit=item_data.get("serving_unit", "g"),
+                    quantity=item_data.get("quantity", 1),
+                    notes=item_data.get("notes"),
+                    calories_per_serving=item_data.get("calories_per_serving")
+                    or item_data.get("calories", 0),
+                    protein_per_serving=item_data.get("protein_per_serving")
+                    or item_data.get("protein", 0),
+                    carbs_per_serving=item_data.get("carbs_per_serving")
+                    or item_data.get("carbs", 0),
+                    fat_per_serving=item_data.get("fat_per_serving")
+                    or item_data.get("fat", 0),
+                )
+                db.add(meal_item)
+
     db.commit()
     db.refresh(meal)
+
+    # 重新加载 meal_items
+    db.refresh(meal, attribute_names=["meal_items"])
 
     logger.info("Meal updated", meal_id=meal.id, user_id=current_user.id)
 
     return meal
 
 
-@router.delete("/meals/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_meal(
     meal_id: int,
     current_user: UserModel = Depends(get_current_active_user),
@@ -208,7 +367,7 @@ async def delete_meal(
     logger.info("Meal deleted", meal_id=meal_id, user_id=current_user.id)
 
 
-@router.get("/meals/{meal_id}/items", response_model=List[MealItemSchema])
+@router.get("/{meal_id}/items", response_model=List[MealItemSchema])
 async def get_meal_items(
     meal_id: int,
     current_user: UserModel = Depends(get_current_active_user),
@@ -230,7 +389,7 @@ async def get_meal_items(
 
 
 @router.post(
-    "/meals/{meal_id}/items",
+    "/{meal_id}/items",
     response_model=MealItemSchema,
     status_code=status.HTTP_201_CREATED,
 )
@@ -255,7 +414,7 @@ async def add_meal_item(
     # 创建餐品项目
     meal_item = MealItem(
         meal_id=meal.id,
-        food_item_id=item_data.food_item_id,
+        food_item_id=None,  # food_item_id is optional
         name=item_data.name,
         serving_size=item_data.serving_size,
         serving_unit=item_data.serving_unit,
@@ -337,62 +496,3 @@ async def create_food_item(
     )
 
     return food_item
-
-
-@router.get("/daily-nutrition-summary", response_model=DailyNutritionSummary)
-async def get_daily_nutrition_summary(
-    target_date: date = Query(default=None, description="目标日期"),
-    current_user: UserModel = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """获取每日营养摘要"""
-    if not target_date:
-        target_date = datetime.today().date()
-
-    start_date = datetime.combine(target_date, datetime.min.time())
-    end_date = datetime.combine(target_date + timedelta(days=1), datetime.min.time())
-
-    # 获取用户当日的餐食记录
-    meals = (
-        db.query(Meal)
-        .filter(
-            Meal.user_id == current_user.id,
-            Meal.meal_datetime >= start_date,
-            Meal.meal_datetime < end_date,
-        )
-        .all()
-    )
-
-    # 计算总营养值
-    total_calories = 0
-    total_protein = 0
-    total_carbs = 0
-    total_fat = 0
-
-    meal_count = 0
-
-    for meal in meals:
-        meal_count += 1
-        if meal.calories:
-            total_calories += meal.calories
-        if meal.protein:
-            total_protein += meal.protein
-        if meal.carbs:
-            total_carbs += meal.carbs
-        if meal.fat:
-            total_fat += meal.fat
-
-    # 构造返回数据
-    summary = DailyNutritionSummary(
-        date=target_date.isoformat(),
-        total_calories=int(total_calories),
-        total_protein=int(total_protein),
-        total_carbs=int(total_carbs),
-        total_fat=int(total_fat),
-        meal_count=meal_count,
-        meals=meals,
-    )
-
-    logger.info("Daily summary retrieved", user_id=current_user.id, date=target_date)
-
-    return summary

@@ -42,12 +42,13 @@ class ApiClient {
 
   // Auth
   async login(email: string, password: string) {
-    const formData = new FormData();
-    formData.append('username', email);
-    formData.append('password', password);
-    
-    const response = await this.client.post('/auth/login', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const params = new URLSearchParams();
+    params.append('username', email);
+    params.append('password', password);
+    const response = await this.client.post('/auth/login', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
     });
     return response.data;
   }
@@ -212,6 +213,48 @@ class ApiClient {
 
   async getCalorieTarget() {
     const response = await this.client.get('/nutrition/calorie-target');
+    return response.data;
+  }
+
+  // Meals
+  async getDailyMeals(date?: string) {
+    const params = date ? { target_date: date } : {};
+    const response = await this.client.get('/meals/daily-nutrition-summary', { params });
+    return response.data;
+  }
+
+  async getFoodItems(skip: number = 0, limit: number = 100, category?: string, isCustom?: boolean) {
+    const params: any = { skip, limit };
+    if (category) params.category = category;
+    if (isCustom !== undefined) params.is_custom = isCustom;
+    const response = await this.client.get('/meals/food-items', { params });
+    return response.data;
+  }
+
+  async createMeal(mealData: any) {
+    const response = await this.client.post('/meals', mealData);
+    return response.data;
+  }
+
+  async updateMeal(mealId: number, mealData: any) {
+    const response = await this.client.put(`/meals/${mealId}`, mealData);
+    return response.data;
+  }
+
+  async deleteMeal(mealId: number) {
+    const response = await this.client.delete(`/meals/${mealId}`);
+    return response.data;
+  }
+
+  async createFoodItem(foodData: any) {
+    const response = await this.client.post('/meals/food-items', foodData);
+    return response.data;
+  }
+
+  async analyzeFoodImage(imageData: string, date?: string) {
+    const payload: any = { image: imageData };
+    if (date) payload.date = date;
+    const response = await this.client.post('/nutrition/analyze-food-image', payload);
     return response.data;
   }
 
@@ -434,6 +477,30 @@ class ApiClient {
     return response.data;
   }
 
+  // Get conversation list (from /chat/conversations)
+  async getConversations() {
+    const response = await this.client.get('/chat/conversations');
+    return response.data;
+  }
+
+  // Get messages from a conversation
+  async getMessages(conversationId: number) {
+    const response = await this.client.get(`/chat/conversations/${conversationId}/messages`);
+    return response.data;
+  }
+
+  // Create new conversation
+  async createConversation(title?: string) {
+    const response = await this.client.post('/chat/conversations', { title });
+    return response.data;
+  }
+
+  // Delete a conversation
+  async deleteConversation(conversationId: number) {
+    const response = await this.client.delete(`/chat/conversations/${conversationId}`);
+    return response.data;
+  }
+
   async getDailyTip() {
     const response = await this.client.get('/ux/daily-tip');
     return response.data;
@@ -446,4 +513,5 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
+export const apiClient = api;
 export default api;

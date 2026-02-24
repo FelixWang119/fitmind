@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MealItemBase(BaseModel):
@@ -68,23 +68,34 @@ class MealUpdate(BaseModel):
     name: Optional[str] = Field(None)
     meal_datetime: Optional[datetime] = None
     notes: Optional[str] = None
+    calories: Optional[float] = Field(None, description="总热量")
+    protein: Optional[float] = Field(None, description="总蛋白质 (g)")
+    carbs: Optional[float] = Field(None, description="总碳水化合物 (g)")
+    fat: Optional[float] = Field(None, description="总脂肪 (g)")
+    items: Optional[List[MealItemCreate]] = Field(None, description="包含的餐品项列表")
 
 
 class Meal(MealBase):
     """餐饮"""
 
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
+
     id: int
     user_id: int
-    calories: Optional[int] = Field(None, description="总热量")
-    protein: Optional[int] = Field(None, description="总蛋白质(g)")
-    carbs: Optional[int] = Field(None, description="总碳水化合物(g)")
-    fat: Optional[int] = Field(None, description="总脂肪(g)")
+    calories: Optional[float] = Field(None, description="总热量")
+    protein: Optional[float] = Field(None, description="总蛋白质 (g)")
+    carbs: Optional[float] = Field(None, description="总碳水化合物 (g)")
+    fat: Optional[float] = Field(None, description="总脂肪 (g)")
     created_at: datetime
     updated_at: Optional[datetime] = None
-    items: List[MealItem] = []
-
-    class Config:
-        from_attributes = True
+    items: List[MealItem] = Field(
+        default_factory=list,
+        alias="meal_items",
+        serialization_alias="items",
+    )
 
 
 class FoodItemBase(BaseModel):
@@ -148,12 +159,15 @@ class DailyNutritionSummary(BaseModel):
     """日常营养摘要"""
 
     date: str
-    total_calories: int
-    total_protein: int
-    total_carbs: int
-    total_fat: int
+    total_calories: float
+    total_protein: float
+    total_carbs: float
+    total_fat: float
     meal_count: int
-    meals: List[Meal]
+    meals: List["Meal"]
+
+    class Config:
+        from_attributes = True
 
 
 class AIRequest(BaseModel):
