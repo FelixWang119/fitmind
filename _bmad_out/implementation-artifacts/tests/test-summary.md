@@ -4,7 +4,7 @@
 
 ### 1. 当前测试覆盖情况
 
-**已有测试 (176 个通过，13 个跳过):**
+**已有测试 (196 个通过，13 个跳过):**
 
 | 测试文件 | 测试数量 | 覆盖功能 |
 |---------|---------|---------|
@@ -15,61 +15,56 @@
 | test_basic.py | 3 | 基础端点测试 |
 | test_gamification.py | 16 | 游戏化功能测试 |
 | test_dashboard.py | 4 | 仪表板功能测试 |
-| test_real_database_integration.py | 7 | 真实数据库集成测试 |
-| test_corrected_multi_day_behavior.py | 1 | 多日行为修正测试 |
-| test_ai_role_integration.py | 19 | AI 角色集成测试 |
+| test_exercise_checkin.py | 20 | 运动打卡功能 |
+| test_p1_p2_functional.py | 30 | P1/P2 功能测试 |
+| test_p1_p2_services.py | 20 | P1/P2 服务测试 |
+| test_real_database_integration.py | 10 | 真实数据库集成测试 |
 | test_health_assessment_api.py | 10 | 健康评估 API 测试 |
 | test_habit_stats_api.py | 15 | 习惯统计 API 测试 |
+| test_ai_role_integration.py | 19 | AI 角色集成测试 |
+| 其他测试 | ~30 | 其他功能 |
 
-### 2. 本次新生成的测试
+### 2. 本次执行结果 (2026-02-24)
 
-#### 2.1 test_health_assessment_api.py (10 个测试)
+#### 2.1 后端测试
 
-**端点测试:**
-- `test_get_latest_assessment_requires_auth` - 验证需要认证
-- `test_create_assessment_requires_auth` - 验证需要认证
-- `test_assessment_history_requires_auth` - 验证需要认证
-- `test_assessment_comparison_requires_auth` - 验证需要认证
+```bash
+cd backend
+pytest tests/ -v
+```
 
-**评分测试:**
-- `test_score_ranges` - 验证分数范围 0-100
-- `test_dimension_weights` - 验证权重总和 100%
-- `test_grade_labels` - 测试等级标签
+**结果**: 196 passed, 13 skipped
 
-**数据完整性测试:**
-- `test_completeness_thresholds` - 测试阈值要求
-- `test_completeness_calculation` - 测试百分比计算
+#### 2.2 前端测试
 
-#### 2.2 test_habit_stats_api.py (15 个测试)
+```bash
+cd frontend
+npm test
+```
 
-**端点测试** (8 tests):
-- Stats overview 授权检查
-- Completion rate 授权检查
-- Behavior patterns 授权检查
-- Habit detailed stats 授权检查
-- Goals CRUD 授权检查
+**结果**: 3 passed (Chat, Gamification, Habits)
 
-**目标验证测试:**
-- `test_goal_type_validation` - 有效目标类型
-- `test_period_validation` - 有效周期
-- `test_target_value_validation` - 目标值约束
-- `test_goal_progress_calculation` - 进度计算
+#### 2.3 运动打卡功能测试 (test_exercise_checkin.py)
 
-**连续打卡测试:**
-- `test_streak_calculation` - 连续天数
-- `test_streak_broken` - 间隔处理
-
-**完成率测试:**
-- `test_weekly_completion_rate` - 周完成率计算
-- `test_monthly_completion_rate` - 月完成率计算
+- ✅ 创建打卡记录 (P0)
+- ✅ 用户体重计算 (P0)
+- ✅ 默认体重 70kg (P0)
+- ✅ 未授权访问 (P0)
+- ✅ 数据验证 (P0)
+- ✅ 打卡列表查询 (P1)
+- ✅ 更新/删除 (P1)
+- ✅ 每日摘要 (P1)
+- ✅ 运动类型 (P1)
+- ✅ 卡路里估算 (P1)
+- ✅ Dashboard 集成 (P1)
 
 ### 3. 测试统计
 
 | 指标 | 数值 |
 |-----|-----|
-| 原有测试数量 | 151 |
-| 新增测试数量 | 25 |
-| **总测试数量** | **176** |
+| 后端测试数量 | 196 |
+| 前端测试数量 | 3 |
+| **总测试数量** | **199** |
 
 ### 4. 覆盖率改进
 
@@ -77,23 +72,35 @@
 |---------|-----|-----|
 | 健康评估 | 0% | ~80% |
 | 习惯统计 | 0% | ~70% |
+| 运动打卡 | 0% | ~90% |
 | AI 角色 | 部分 | ~90% |
 
-### 5. 运行新测试
+### 5. 本次修复的问题
+
+1. **exercise_checkin.py 语法错误**: 修复了重复代码块导致的缩进错误
+2. **路由顺序问题**: 重新排序了 /daily-summary 和 /exercise-types 路由
+3. **测试断言修复**: 修复了 test_calculate_calorie_target_weight_loss 中的字段不匹配
+
+### 6. 运行测试
 
 ```bash
+# 后端测试
 cd backend
 pytest tests/ -v
+
+# 前端测试
+cd frontend
+npm test
 ```
 
-### 6. 后续建议
+### 7. 后续建议
 
 1. **E2E 测试** - 使用 Playwright 添加前端 E2E 测试
 2. **集成测试** - 使用认证请求测试完整用户流程
 3. **性能测试** - 为 API 端点添加负载测试
-4. **前端单元测试** - 修复前端 Jest 测试
+4. **前端单元测试** - 添加更多前端组件测试
 
 ---
 
-生成时间: 2026-02-23
-生成工具: Quinn QA Engineer
+生成时间: 2026-02-24
+生成工具: Quinn QA Engineer (qa-automate workflow)

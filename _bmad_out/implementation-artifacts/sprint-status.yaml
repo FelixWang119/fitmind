@@ -64,7 +64,7 @@ development_status:
   epic-3: done
   3-1-weight-tracking: done
   3-2-diet-logging: done
-  3-3-exercise-logging: done
+  3-3-exercise-logging: done  # 2026-02-24: 代码审查完成，所有问题已修复，测试通过
   3-4-sleep-logging: done
   3-5-health-report: done
   epic-3-retrospective: done

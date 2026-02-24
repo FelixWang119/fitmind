@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="3" failures="0" errors="0" time="12.482">
+  <testsuite name="Chat Component" errors="0" failures="0" skipped="0" timestamp="2026-02-24T12:37:10" time="6.431" tests="1">
+    <testcase classname="Chat Component renders without crashing" name="Chat Component renders without crashing" time="0.42">
+    </testcase>
+  </testsuite>
+  <testsuite name="Gamification Component" errors="0" failures="0" skipped="0" timestamp="2026-02-24T12:37:10" time="6.342" tests="1">
+    <testcase classname="Gamification Component renders without crashing" name="Gamification Component renders without crashing" time="0.526">
+    </testcase>
+  </testsuite>
+  <testsuite name="Habits Component" errors="0" failures="0" skipped="0" timestamp="2026-02-24T12:37:10" time="6.507" tests="1">
+    <testcase classname="Habits Component renders without crashing" name="Habits Component renders without crashing" time="0.75">
+    </testcase>
+  </testsuite>
+</testsuites>

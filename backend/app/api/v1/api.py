@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     dashboard,
     emotional_support,
     exercises,
+    exercise_checkin,
     gamification,
     habit,
     habits,
@@ -59,6 +60,11 @@ api_router.include_router(
 
 # 运动记录端点
 api_router.include_router(exercises.router, prefix="/exercises", tags=["exercises"])
+
+# 运动打卡端点
+api_router.include_router(
+    exercise_checkin.router, prefix="/exercise-checkin", tags=["exercise-checkin"]
+)
 
 # 餐饮记录端点
 api_router.include_router(meals.router, prefix="/meals", tags=["meals"])

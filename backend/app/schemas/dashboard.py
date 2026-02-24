@@ -72,3 +72,7 @@ class QuickStats(BaseModel):
     daily_step_count: int
     water_intake: int
     sleep_hours: float
+    # 热量构成明细
+    intake_calories: Optional[int] = 0
+    basal_metabolism: Optional[int] = 0
+    exercise_calories_burned: Optional[int] = 0

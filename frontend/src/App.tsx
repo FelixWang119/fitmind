@@ -20,6 +20,7 @@ import { EmotionalSupportChat } from './pages/EmotionalSupportChat';
 import Gamification from './pages/Gamification';
 import { Chat } from './pages/Chat';
 import Profile from './pages/Profile';
+import ExerciseCheckIn from './pages/ExerciseCheckIn';
 
 function App() {
   const { checkAuth } = useAuthStore();
@@ -149,16 +150,25 @@ function App() {
         }
       />
       
-      <Route
-        path="/profile"
-        element={
-          <Layout>
-            <Profile />
-          </Layout>
-        }
-      />
-      
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+       <Route
+         path="/profile"
+         element={
+           <Layout>
+             <Profile />
+           </Layout>
+         }
+       />
+       
+       <Route
+         path="/exercise-checkin"
+         element={
+           <Layout>
+             <ExerciseCheckIn />
+           </Layout>
+         }
+       />
+       
+       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

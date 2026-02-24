@@ -244,17 +244,13 @@ def get_quick_stats(db: Session, user: User) -> QuickStats:
     """
     获取快速统计数据
     """
-    from datetime import date
+    from datetime import datetime, date
     from sqlalchemy import func
     from app.models.health_record import HealthRecord
-    from app.models.nutrition import Meal
-    from app.models.exercise_checkin import ExerciseCheckIn
-    from app.models.calorie_goal import CalorieGoal
-
-    # 获取今天日期
+    from app.models.nutrition import Meal  # 导入正确的Meal表
+    
+    # 获取今天的餐食记录
     today = date.today()
-
-    # 获取今天的餐饮记录，统计摄入热量
     today_meals = (
         db.query(Meal)
         .filter(
@@ -263,71 +259,72 @@ def get_quick_stats(db: Session, user: User) -> QuickStats:
         )
         .all()
     )
-
-    # 计算摄入热量
-    intake_calories = 0
+    
+    # 计算今天总热量，使用 Meal 表的总热量
+    today_calories = 0
     if today_meals:
         for meal in today_meals:
-            if meal.calories is not None:
+            if hasattr(meal, 'calories') and meal.calories is not None:
                 try:
-                    intake_calories += int(meal.calories)
-                except (ValueError, TypeError):
-                    continue
-
-    # 获取今天的运动记录，统计运动消耗热量（负值，有助于减少净热量）
-    today_exercises = (
-        db.query(ExerciseCheckIn)
-        .filter(
-            ExerciseCheckIn.user_id == user.id,
-            func.date(ExerciseCheckIn.created_at) == today,
-        )
-        .all()
-    )
-
-    # 计算消耗热量
-    exercise_calories_burned = 0
-    if today_exercises:
-        for exercise in today_exercises:
-            if exercise.calories_burned is not None:
-                try:
-                    exercise_calories_burned += int(exercise.calories_burned)
-                except (ValueError, TypeError):
-                    continue
-
-    # 获取基础代谢值（从热量目标表获取）
-    calorie_goal = (
-        db.query(CalorieGoal)
-        .filter(
-            CalorieGoal.user_id == user.id,
-            CalorieGoal.goal_date == today,
-        )
-        .first()
-    )
-
-    # 如果今天没有特定热量目标，查看是否有最近的目标
-    if not calorie_goal:
-        calorie_goal = (
-            db.query(CalorieGoal)
-            .filter(CalorieGoal.user_id == user.id)
-            .order_by(CalorieGoal.created_at.desc())
+                    cal_val = int(meal.calories)
+                    today_calories += cal_val
+                except (TypeError, ValueError):
+                    # 如果转换失败，跳过这一项
+                    pass
+    
+    # 简化健康记录的读取逻辑，减少潜在类型冲突
+    # 避免使用 getattr 在 ORM 对象上
+    try:
+        today_record = (
+            db.query(HealthRecord)
+            .filter(
+                HealthRecord.user_id == user.id,
+                func.date(HealthRecord.created_at) == today,
+            )
             .first()
         )
 
-    # 使用找到的热量目标，否则使用默认值（根据性别调整）
-    if calorie_goal and calorie_goal.target_calories:
-        baseline_calories = calorie_goal.target_calories
-    else:
-        # 默认热量目标，依据用户性别
-        if user.gender and user.gender.lower() == "male":
-            baseline_calories = 2200
+        if today_record:
+            # 直接尝试访问属性，提供默认值
+            daily_step_count = getattr(today_record, 'steps_count', 8542)
+            if daily_step_count is None:
+                daily_step_count = 8542
+            
+            sleep_hours = getattr(today_record, 'sleep_hours', 7.5)
+            if sleep_hours is None:
+                sleep_hours = 7.5
         else:
-            baseline_calories = 2000
+            # 如果没有今天记录，使用默认值
+            daily_step_count = 8542
+            sleep_hours = 7.5
+    except:
+        # 如果 health record 查询失败，使用默认值
+        daily_step_count = 8542
+        sleep_hours = 7.5
 
-    # 计算热量平衡（正值=热量盈余，负值=热量缺口）
-    # 使用公式：摄入热量 - 基础代谢 - 运动消耗
-    calorie_balance = intake_calories - baseline_calories - exercise_calories_burned
+    # 设置水摄入量为合理默认值
+    water_intake = 1800  # 默认饮水量
 
-    # 获取今天的健康记录（用于步数、睡眠等）
+    return QuickStats(
+        today_calories=int(today_calories) if today_calories is not None else 0,
+        daily_step_count=int(daily_step_count) if isinstance(daily_step_count, (int, float)) else 8542,
+        water_intake=int(water_intake),
+        sleep_hours=float(sleep_hours) if isinstance(sleep_hours, (int, float)) else 7.5,
+    )
+        .all()
+    )
+
+    # 计算今天总热量，如果没有记录则默认为0
+    today_calories = 0
+    if today_meals:
+        for meal in today_meals:
+            # 获取实际数值并加到总计中
+            if meal.calories is not None:
+                today_calories += int(meal.calories)
+            else:
+                today_calories += 0
+
+    # 尝试从HealthRecord获取其他数据
     today_record = (
         db.query(HealthRecord)
         .filter(
@@ -339,33 +336,27 @@ def get_quick_stats(db: Session, user: User) -> QuickStats:
 
     # 使用实际数据或默认值
     if today_record:
-        daily_step_count = today_record.steps_count or 8542
-        water_intake = 1800
-        sleep_hours = today_record.sleep_hours or 7.5
-    else:
-        recent_record = (
-            db.query(HealthRecord)
-            .filter(HealthRecord.user_id == user.id)
-            .order_by(HealthRecord.created_at.desc())
-            .first()
+        daily_step_count = (
+            int(today_record.steps_count)
+            if today_record.steps_count is not None
+            else 8542
         )
+        sleep_hours = (
+            float(today_record.sleep_hours)
+            if today_record.sleep_hours is not None
+            else 7.5
+        )
+    else:
+        # 如果没有今天的健康记录，使用默认值
+        daily_step_count = 8542
+        sleep_hours = 7.5
 
-        if recent_record:
-            daily_step_count = recent_record.steps_count or 8542
-            sleep_hours = recent_record.sleep_hours or 7.5
-        else:
-            daily_step_count = 8542
-            sleep_hours = 7.5
+    # 设置水摄入量为合理默认值
+    water_intake = 1800  # 默认饮水量
 
-        water_intake = 1800
-
-    # 返回所有统计数据，包括各组成部分
     return QuickStats(
-        today_calories=calorie_balance,  # 总热量平衡值
-        daily_step_count=daily_step_count,
-        water_intake=water_intake,
-        sleep_hours=sleep_hours,
-        intake_calories=intake_calories,  # 摄入热量
-        basal_metabolism=baseline_calories,  # 基础代谢目标值
-        exercise_calories_burned=exercise_calories_burned,  # 运动消耗热量
+        today_calories=int(today_calories),  # 确保类型为int
+        daily_step_count=int(daily_step_count),  # 确保类型为int
+        water_intake=int(water_intake),  # 确保类型为int
+        sleep_hours=float(sleep_hours),  # 确保类型为float
     )

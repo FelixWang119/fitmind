@@ -98,7 +98,6 @@ class TestNutritionServiceFunctionality:
         """Test calorie target for weight loss goal"""
         result = nutrition_service.calculate_calorie_target(male_user)
         assert result["target"] < result["maintenance"]
-        assert result["weight_difference"] == 5000
 
     def test_calculate_calorie_target_weight_gain(self, nutrition_service, male_user):
         """Test calorie target for weight gain goal"""

@@ -1,8 +1,11 @@
 ---
 project_name: bmad
 user_name: Felix
-date: '2026-02-23'
-sections_completed: ['technology_stack', 'code_patterns', 'api_conventions', 'database_patterns', 'testing_rules', 'naming_conventions']
+date: '2026-02-24'
+sections_completed: ['technology_stack', 'language_specific_rules', 'framework_specific_rules', 'testing_rules', 'code_quality_rules', 'critical_rules']
+status: complete
+rule_count: 45
+optimized_for_llm: true
 ---
 
 # Project Context for AI Agents
@@ -44,6 +47,173 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - `pyproject.toml` - 项目配置 (Poetry)
 - `pytest.ini` - 测试配置
 - `mypy.ini` - 类型检查配置
+
+---
+
+## Language-Specific Rules
+
+### TypeScript Configuration (Frontend)
+
+**tsconfig.json Requirements:**
+- `strict: true` - 启用所有严格类型检查
+- `noUnusedLocals: true` - 禁止未使用的局部变量
+- `noUnusedParameters: true` - 禁止未使用的参数
+- 路径别名：`@/*` → `src/*`
+
+### Python Type Checking (Backend)
+
+**mypy Configuration:**
+- `disallow_untyped_defs = true` - 所有函数必须有类型注解
+- `no_implicit_optional = true` - Optional 必须显式声明
+- `strict_equality = true` - 严格相等性检查
+
+### Import Organization
+
+**Python (isort):**
+1. 标准库
+2. 第三方库
+3. 本地应用
+
+**TypeScript:**
+- 使用 `@/` 别名导入 src 目录
+- 按类型分组：React hooks → 组件 → 工具
+
+### Error Handling
+
+**Python/FastAPI:**
+- 使用 `HTTPException` 返回结构化错误
+- 错误格式：`{"error": "code", "message": "描述"}`
+
+**TypeScript/React:**
+- 使用 try-catch 处理异步错误
+- 使用 React Hot Toast 显示用户提示
+
+---
+
+## Framework-Specific Rules
+
+### React (Frontend)
+
+**Hooks Usage:**
+- 只使用函数组件和 React Hooks
+- 使用 Zustand 进行全局状态管理 (`import { create } from 'zustand'`)
+- 使用 React Router v6 进行路由
+
+**Component Structure:**
+- TypeScript + JSX
+- TailwindCSS 样式
+- lucide-react 图标库
+
+**State Management (Zustand):**
+- 使用 `create()` 创建 store
+- 避免在组件外部调用 hooks
+
+### FastAPI (Backend)
+
+**Endpoint Pattern:**
+```python
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+
+router = APIRouter()
+
+@router.get("/endpoint")
+def endpoint_handler(db: Session = Depends(get_db)):
+    pass
+```
+
+**Authentication:**
+- JWT 令牌认证
+- 使用 `get_current_active_user` 保护端点
+- 令牌包含：sub, email, user_id
+
+---
+
+## Testing Rules
+
+### Backend (pytest)
+
+**Test Organization:**
+- 测试文件：`tests/test_*.py`
+- 使用 `conftest.py` 共享 fixtures
+- 使用 `factory-boy` 创建测试数据
+
+**Priority Markers:**
+- `p0` - 核心功能 (注册、登录 - 必须通过)
+- `p1` - 重要功能
+- `p2` - 一般功能、性能测试
+- `p3` - 边缘情况
+
+**Database Testing:**
+- 使用真实 SQLite 数据库进行集成测试
+- 使用 `app.dependency_overrides` 覆盖数据库依赖
+- 测试数据使用 UUID 避免冲突
+
+### Frontend (Jest + Playwright)
+
+**Jest Requirements:**
+- 覆盖率要求：80% (branches, functions, lines, statements)
+- 使用 Testing Library 进行组件测试
+- 使用 `ts-jest` 支持 TypeScript
+
+**Playwright E2E:**
+- 关键路径测试：`--grep @critical`
+- 测试结果输出到 `test-results/`
+
+---
+
+## Code Quality & Style Rules
+
+### Python (Backend)
+
+**Formatting (Black):**
+- 行宽：88 字符
+- 目标版本：Python 3.11
+
+**Import Sorting (isort):**
+1. 标准库
+2. 第三方库
+3. 本地应用
+
+**Type Checking (mypy):**
+- 严格模式
+- 所有函数必须有类型注解
+
+### TypeScript (Frontend)
+
+**Formatting (Prettier):**
+- 行宽：80 字符
+- 单引号
+- 行尾分号：是
+- 缩进：2 空格
+
+**ESLint:**
+- 使用 `@typescript-eslint/recommended`
+- 使用 `react-hooks/recommended`
+
+### Naming Conventions
+
+| 类型 | 约定 | 示例 |
+|---|---|---|
+| Python 文件 | snake_case | `auth_service.py` |
+| Python 类 | PascalCase | `class UserService` |
+| Python 函数 | snake_case | `def get_user_by_email()` |
+| Python 常量 | UPPER_SNAKE_CASE | `MAX_LOGIN_ATTEMPTS` |
+| 数据库表 | 复数 snake_case | `users`, `health_records` |
+| API 路由 | kebab-case | `/api/v1/user-profile` |
+| TypeScript 组件 | PascalCase | `UserProfile.tsx` |
+| TypeScript 工具 | camelCase | `utils.ts` |
+
+### Documentation
+
+**Python:**
+- API 端点使用中文 docstrings
+- 使用 structlog 进行日志记录 (禁止 print)
+
+**TypeScript:**
+- 组件使用 JSDoc 注释
+- 公共函数需要类型注解
 
 ---
 
@@ -371,6 +541,43 @@ This is a weight management app, so units are crucial:
 
 ---
 
+## Critical Don't-Miss Rules
+
+### ⚠️ Weight Units (CRITICAL)
+
+**所有重量字段使用克 (grams), 不是千克!**
+
+```python
+# ✅ Correct
+weight = 70000  # 70kg
+
+# ❌ Wrong
+weight = 70
+```
+
+### Anti-Patterns to Avoid
+
+- **不要使用 print** - 使用 `structlog.get_logger()`
+- **不要在端点中直接创建数据库会话** - 使用 `Depends(get_db)`
+- **不要使用 Pydantic v1 语法** - 使用 `from_attributes = True`
+- **不要用 mock 进行后端集成测试** - 使用真实数据库
+- **不要直接在组件外部调用 Zustand hooks**
+
+### Security Rules
+
+- 密码必须使用 bcrypt 哈希
+- JWT 令牌必须包含：sub, email, user_id
+- 受保护端点必须验证用户是否 active
+- 邮件地址必须使用 EmailStr 验证
+
+### Edge Cases
+
+- 测试数据使用 UUID 避免冲突
+- 日期时间使用时区感知
+- 所有输入必须使用 Pydantic schemas 验证
+
+---
+
 ## Notes for AI Agents
 
 1. **Always use grams for weight** - This is the most common mistake
@@ -382,4 +589,22 @@ This is a weight management app, so units are crucial:
 
 ---
 
-_Last updated: 2026-02-23_
+## Usage Guidelines
+
+### For AI Agents
+
+- **阅读此文件** 在实现任何代码之前
+- **严格遵守所有规则** 按文档所述
+- **如有疑问** 选择更严格的选项
+- **更新此文件** 如果出现新模式
+
+### For Humans
+
+- **保持精简** 专注于 AI 代理需要的规则
+- **及时更新** 当技术栈变化时
+- **定期审查** 每季度检查过时规则
+- **移除冗余** 删除变得显而易见的规则
+
+---
+
+_Last updated: 2026-02-24_

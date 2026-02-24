@@ -12,7 +12,11 @@ from app.schemas.ai import AIHealthAdviceRequest, AIHealthAdviceResponse
 from app.models.health_record import HealthRecord
 from sqlalchemy import func
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+
+# F15: 导入运动打卡模型和 Schema
+from app.models.exercise_checkin import ExerciseCheckIn
+from app.schemas.exercise_checkin import DailySummaryResponse
 
 router = APIRouter()
 
@@ -145,3 +149,84 @@ def get_dashboard_trends(
             "active_habits": active_habits,
         },
     }
+
+
+@router.get("/exercise-summary", response_model=DailySummaryResponse)
+def get_exercise_summary(
+    date: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    F15: 获取 Dashboard 运动摘要卡片数据
+
+    返回当日运动数据用于 Dashboard 显示
+    """
+    from datetime import date as date_type
+
+    # 解析日期
+    if date:
+        target_date = datetime.fromisoformat(date).date()
+    else:
+        target_date = datetime.utcnow().date()
+
+    # 日期范围
+    start_datetime = datetime.combine(target_date, datetime.min.time())
+    end_datetime = start_datetime + timedelta(days=1)
+
+    # 聚合查询
+    result = (
+        db.query(
+            func.sum(ExerciseCheckIn.duration_minutes).label("total_duration"),
+            func.sum(ExerciseCheckIn.calories_burned).label("total_calories"),
+            func.count(ExerciseCheckIn.id).label("sessions_count"),
+            func.avg(ExerciseCheckIn.heart_rate_avg).label("avg_heart_rate"),
+        )
+        .filter(
+            ExerciseCheckIn.user_id == current_user.id,
+            ExerciseCheckIn.started_at >= start_datetime,
+            ExerciseCheckIn.started_at < end_datetime,
+            ExerciseCheckIn.deleted_at.is_(None),
+        )
+        .first()
+    )
+
+    # 获取运动类型列表
+    types_result = (
+        db.query(ExerciseCheckIn.exercise_type)
+        .filter(
+            ExerciseCheckIn.user_id == current_user.id,
+            ExerciseCheckIn.started_at >= start_datetime,
+            ExerciseCheckIn.started_at < end_datetime,
+            ExerciseCheckIn.deleted_at.is_(None),
+        )
+        .distinct()
+        .all()
+    )
+    exercise_types = [t[0] for t in types_result]
+
+    # Dashboard 特定字段：目标值 (可从用户设置获取，这里使用默认值)
+    goal_duration = 60  # 默认目标：每天 60 分钟
+    goal_calories = 500  # 默认目标：每天燃烧 500kcal
+
+    # 计算进度百分比
+    total_duration = result.total_duration or 0
+    total_calories = result.total_calories or 0
+    progress_percentage = max(
+        (total_duration / goal_duration * 100) if goal_duration else 0,
+        (total_calories / goal_calories * 100) if goal_calories else 0,
+    )
+
+    return DailySummaryResponse(
+        date=target_date.isoformat(),
+        total_duration_minutes=total_duration,
+        total_calories_burned=total_calories,
+        sessions_count=result.sessions_count or 0,
+        exercise_types=exercise_types,
+        average_heart_rate=int(result.avg_heart_rate)
+        if result.avg_heart_rate
+        else None,
+        goal_duration=goal_duration,
+        goal_calories=goal_calories,
+        progress_percentage=min(progress_percentage, 100),  #  capped at 100%
+    )

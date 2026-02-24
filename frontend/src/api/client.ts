@@ -510,6 +510,55 @@ class ApiClient {
     const response = await this.client.get('/ux/recommended-next-steps');
     return response.data;
   }
+
+  // Exercise Check-in
+  async getExerciseCheckIns(params?: {
+    page?: number;
+    limit?: number;
+    start_date?: string;
+    end_date?: string;
+    exercise_type?: string;
+  }) {
+    const response = await this.client.get('/exercise-checkin/', { params });
+    return response.data;
+  }
+
+  async getExerciseCheckInById(id: number) {
+    const response = await this.client.get(`/exercise-checkin/${id}`);
+    return response.data;
+  }
+
+  async createExerciseCheckIn(data: any) {
+    const response = await this.client.post('/exercise-checkin/', data);
+    return response.data;
+  }
+
+  async updateExerciseCheckIn(id: number, data: any) {
+    const response = await this.client.put(`/exercise-checkin/${id}`, data);
+    return response.data;
+  }
+
+  async deleteExerciseCheckIn(id: number) {
+    const response = await this.client.delete(`/exercise-checkin/${id}`);
+    return response.data;
+  }
+
+  async getExerciseDailySummary(date?: string) {
+    const params = date ? { date } : {};
+    const response = await this.client.get('/exercise-checkin/daily-summary', { params });
+    return response.data;
+  }
+
+  async getExerciseTypes() {
+    const response = await this.client.get('/exercise-checkin/exercise-types');
+    return response.data;
+  }
+
+  async getDashboardExerciseSummary(date?: string) {
+    const params = date ? { date } : {};
+    const response = await this.client.get('/dashboard/exercise-summary', { params });
+    return response.data;
+  }
 }
 
 export const api = new ApiClient();
