@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api/client';
+import api from '../api/client';
 
 interface UserProfile {
   id?: number;
@@ -9,8 +9,8 @@ interface UserProfile {
   age?: number;
   gender?: string;
   height?: number;
-  initial_weight?: number;  // 原始体重（克）
-  target_weight?: number;   // 目标体重（克）
+  initial_weight?: number;  // 存储千克，展示给用户也以千克
+  target_weight?: number;   // 存储千克，展示给用户也以千克
   activity_level?: string;
   dietary_preferences?: string[];
 }
@@ -28,8 +28,14 @@ const Profile = () => {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const data = await api.getCurrentUser(); // This probably gets the user profile already
-      setProfile(data);
+      const data = await api.getCurrentUser();
+      // 处理数据格式转换：如果初始体重和目标体重是克单位，转换为千克
+      const formattedData = {
+        ...data,
+        initial_weight: data.initial_weight ? data.initial_weight / 1000 : undefined,
+        target_weight: data.target_weight ? data.target_weight / 1000 : undefined,
+      };
+      setProfile(formattedData);
     } catch (err) {
       setError('Failed to load profile');
       console.error(err);
@@ -61,7 +67,7 @@ const Profile = () => {
     setError('');
     
     try {
-      // 将体重塑成API接受的格式（克为单位）
+      // 体重处理：从KG转换为克（因为数据库可能是按克存储）
       const updatedProfile = { ...profile };
       if (updatedProfile.initial_weight) {
         updatedProfile.initial_weight = updatedProfile.initial_weight * 1000; // Convert kg to g
@@ -70,7 +76,7 @@ const Profile = () => {
         updatedProfile.target_weight = updatedProfile.target_weight * 1000; // Convert kg to g
       }
 
-      await api.updateUserProfile(updatedProfile); // We'll add this method to the API client
+      await api.updateUserProfile(updatedProfile);
       alert('Profile updated successfully!');
     } catch (err) {
       setError('Failed to update profile');
@@ -178,7 +184,7 @@ const Profile = () => {
               type="number"
               step="0.1"
               name="initial_weight"
-              value={profile.initial_weight ? profile.initial_weight / 1000 : ''} // Convert g to kg for display
+              value={profile.initial_weight ? profile.initial_weight : ''} // 直接显示公斤值
               onChange={handleChange}
               min="30"
               max="300"
@@ -192,7 +198,7 @@ const Profile = () => {
               type="number"
               step="0.1"
               name="target_weight"
-              value={profile.target_weight ? profile.target_weight / 1000 : ''} // Convert g to kg for display
+              value={profile.target_weight ? profile.target_weight : ''} // 直接显示公斤值
               onChange={handleChange}
               min="30"
               max="300"
@@ -225,7 +231,7 @@ const Profile = () => {
               type="text"
               placeholder="请用逗号分隔，例如：素食,低碳水,无麸质"
               name="dietary_preferences"
-              value={profile.dietary_preferences ? profile.dietary_preferences.join(', ') : ''}
+              value={Array.isArray(profile.dietary_preferences) ? profile.dietary_preferences.join(', ') : ''}
               onChange={handleChange}
               className="w-full px-4 py-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
             />
