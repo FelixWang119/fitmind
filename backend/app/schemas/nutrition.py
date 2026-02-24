@@ -45,6 +45,13 @@ class NutritionRecommendation(BaseModel):
     meal_suggestions: List[MealSuggestion] = Field(..., description="餐食建议")
     hydration_goal: float = Field(..., description="饮水目标(毫升)")
     supplement_recommendations: List[str] = Field(..., description="补充剂建议")
+    user_weight: Optional[float] = Field(None, description="用户体重(kg)")
+    user_height: Optional[int] = Field(None, description="用户身高(cm)")
+    user_age: Optional[int] = Field(None, description="用户年龄")
+    user_gender: Optional[str] = Field(None, description="用户性别")
+    user_activity_level: Optional[str] = Field(None, description="用户活动水平")
+    user_current_weight: Optional[float] = Field(None, description="用户当前体重(kg)")
+    user_target_weight: Optional[float] = Field(None, description="用户目标体重(kg)")
 
 
 class FoodItem(BaseModel):

@@ -56,6 +56,7 @@ class UserUpdate(BaseModel):
     age: Optional[int] = Field(None, ge=0, le=120)
     gender: Optional[str] = None
     height: Optional[int] = Field(None, ge=50, le=250)
+    initial_weight: Optional[int] = Field(None, ge=20000, le=300000)
     target_weight: Optional[int] = Field(None, ge=20000, le=300000)
     activity_level: Optional[str] = None
     dietary_preferences: Optional[List[str]] = None

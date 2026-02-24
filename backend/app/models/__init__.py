@@ -29,7 +29,9 @@ from app.models.gamification import (
     LeaderboardEntry,
 )
 from app.models.nutrition import Meal, MealItem, FoodItem, WaterIntake
+from app.models.calorie_goal import CalorieGoal
 from app.models.password_reset import PasswordResetToken
+from app.models.rewards import Reward, RewardRedemption
 
 # 导出所有模型
 __all__ = [
@@ -65,5 +67,8 @@ __all__ = [
     "MealItem",
     "FoodItem",
     "WaterIntake",
+    "CalorieGoal",
     "PasswordResetToken",
+    "Reward",
+    "RewardRedemption",
 ]

@@ -13,6 +13,7 @@ import HabitStats from './pages/HabitStats';
 import HabitDetail from './pages/HabitDetail';
 import BehaviorPatterns from './pages/BehaviorPatterns';
 import Nutrition from './pages/Nutrition';
+import DietTracking from './pages/DietTracking';
 import HealthTracker from './pages/HealthTracker';
 import HealthAssessment from './pages/HealthAssessment';
 import { EmotionalSupportChat } from './pages/EmotionalSupportChat';
@@ -85,23 +86,32 @@ function App() {
         }
       />
       
-      <Route
-        path="/nutrition"
-        element={
-          <Layout>
-            <Nutrition />
-          </Layout>
-        }
-      />
-      
-      <Route
-        path="/health"
-        element={
-          <Layout>
-            <HealthTracker />
-          </Layout>
-        }
-      />
+       <Route
+         path="/nutrition"
+         element={
+           <Layout>
+             <Nutrition />
+           </Layout>
+         }
+       />
+       
+       <Route
+         path="/diet-tracking"
+         element={
+           <Layout>
+             <DietTracking />
+           </Layout>
+         }
+       />
+       
+       <Route
+         path="/health"
+         element={
+           <Layout>
+             <HealthTracker />
+           </Layout>
+         }
+       />
       
       <Route
         path="/health/assessment"

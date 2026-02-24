@@ -9,6 +9,7 @@ import structlog
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.qwen_config import qwen_config
 from app.models.conversation import Conversation, Message, MessageRole
 from app.schemas.ai import AIResponse
 from app.services.ai_role_detection import determine_role_by_content
@@ -26,9 +27,9 @@ class AIService:
     """AI服务基类"""
 
     def __init__(self, db: Optional[Session] = None, user_id: Optional[int] = None):
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=qwen_config.CHAT_TIMEOUT)
         self.mock_mode = (
-            settings.ENVIRONMENT == "development" and not settings.QWEN_API_KEY
+            settings.ENVIRONMENT == "development" and not qwen_config.QWEN_API_KEY
         )
         self.db = db
         self.user_id = user_id
@@ -56,18 +57,18 @@ class AIService:
                 gamification_overview = gamification_service.get_gamification_overview(
                     user
                 )
-                progress_data[
-                    "streak_days"
-                ] = gamification_overview.gamification_stats.longest_streak
-                progress_data[
-                    "total_points"
-                ] = gamification_overview.user_points.total_points
-                progress_data[
-                    "current_level"
-                ] = gamification_overview.user_level.current_level
-                progress_data[
-                    "badges_earned"
-                ] = gamification_overview.gamification_stats.total_badges
+                progress_data["streak_days"] = (
+                    gamification_overview.gamification_stats.longest_streak
+                )
+                progress_data["total_points"] = (
+                    gamification_overview.user_points.total_points
+                )
+                progress_data["current_level"] = (
+                    gamification_overview.user_level.current_level
+                )
+                progress_data["badges_earned"] = (
+                    gamification_overview.gamification_stats.total_badges
+                )
             except Exception as e:
                 logger.warning("Failed to get gamification data", error=str(e))
 
@@ -238,9 +239,7 @@ class AIService:
 
                     progress_mention = ""
                     if progress_data.get("streak_days", 0) > 0:
-                        progress_mention += (
-                            f"\n\n🌟 **你的进步:** 已经坚持了 {progress_data['streak_days']} 天！"
-                        )
+                        progress_mention += f"\n\n🌟 **你的进步:** 已经坚持了 {progress_data['streak_days']} 天！"
                     if progress_data.get("badges_earned", 0) > 0:
                         progress_mention += (
                             f" 已获得 {progress_data['badges_earned']} 枚徽章！"
@@ -275,9 +274,7 @@ class AIService:
         progress_mention = ""
         if progress_data:
             if progress_data.get("streak_days", 0) > 0:
-                progress_mention += (
-                    f"\n\n🌟 我看到你已经很努力了！已经坚持了 {progress_data['streak_days']} 天，"
-                )
+                progress_mention += f"\n\n🌟 我看到你已经很努力了！已经坚持了 {progress_data['streak_days']} 天，"
             if progress_data.get("current_level", 0) > 1:
                 progress_mention += f"等级达到了 {progress_data['current_level']}！"
             if progress_mention:
@@ -310,10 +307,7 @@ class AIService:
 
         try:
             # 构建请求
-            headers = {
-                "Authorization": f"Bearer {settings.QWEN_API_KEY}",
-                "Content-Type": "application/json",
-            }
+            headers = qwen_config.get_headers()
 
             # 获取角色提示词
             role_prompt = self._get_role_system_prompt(current_role)
@@ -329,15 +323,15 @@ class AIService:
             messages.append({"role": "user", "content": message})
 
             payload = {
-                "model": settings.QWEN_MODEL,
+                "model": qwen_config.QWEN_CHAT_MODEL,
                 "messages": messages,
-                "temperature": 0.7,
+                "temperature": qwen_config.CHAT_TEMPERATURE,
                 "max_tokens": 1000,
             }
 
             # 发送请求
             response = await self.client.post(
-                settings.QWEN_API_URL, headers=headers, json=payload
+                qwen_config.QWEN_API_URL, headers=headers, json=payload
             )
 
             response.raise_for_status()
@@ -358,7 +352,7 @@ class AIService:
 
             return AIResponse(
                 response=ai_response,
-                model=settings.QWEN_MODEL,
+                model=qwen_config.QWEN_CHAT_MODEL,
                 tokens_used=tokens_used,
                 response_time=response_time,
                 timestamp=datetime.utcnow(),

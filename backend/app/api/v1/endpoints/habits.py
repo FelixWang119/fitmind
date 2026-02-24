@@ -31,30 +31,65 @@ router = APIRouter()
 async def get_habits(
     current_user: UserModel = Depends(get_current_active_user),
     db: Session = Depends(get_db),
-    category: Optional[str] = Query(None, description="过滤类别"),
-    active_only: bool = Query(True, description="只返回活跃状态"),
 ):
     """获取用户的所有习惯"""
-    query = db.query(Habit).filter(Habit.user_id == current_user.id)
+    habits = db.query(Habit).filter(Habit.user_id == current_user.id).all()
+    return habits
 
-    if active_only:
-        query = query.filter(Habit.is_active == True)
 
-    if category:
-        habit_category = HabitCategory(category)
-        query = query.filter(Habit.category == habit_category)
+# IMPORTANT: More specific routes must come BEFORE routes with path parameters
+@router.get("/daily-checklist", response_model=DailyHabitChecklist)
+async def get_daily_habit_checklist(
+    target_date: date = Query(None, description="目标日期，默认为 today"),
+    current_user: UserModel = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """获取每日习惯清单"""
+    if target_date is None:
+        target_date = datetime.utcnow().date()
 
-    habits = query.all()
-
-    logger.info(
-        "Fetched habits",
-        user_id=current_user.id,
-        habit_count=len(habits),
-        category=category,
-        active_only=active_only,
+    # Get all active habits for user
+    active_habits = (
+        db.query(Habit)
+        .filter(Habit.user_id == current_user.id, Habit.is_active == True)
+        .all()
     )
 
-    return habits
+    # Get any completions for today
+    today_start = datetime.combine(target_date, datetime.min.time())
+    today_end = datetime.combine(target_date + timedelta(days=1), datetime.min.time())
+
+    completed_ids = set()
+    todays_completions = (
+        db.query(HabitCompletion)
+        .join(Habit)
+        .filter(
+            Habit.user_id == current_user.id,
+            HabitCompletion.completion_date >= today_start,
+            HabitCompletion.completion_date < today_end,
+        )
+        .all()
+    )
+
+    for completion in todays_completions:
+        completed_ids.add(completion.habit_id)
+
+    # Build checklist
+    checklist_items = []
+    for habit in active_habits:
+        checklist_items.append(
+            {
+                "habit_id": habit.id,
+                "habit_name": habit.name,
+                "category": habit.category,
+                "completed": habit.id in completed_ids,
+                "preferred_time": habit.preferred_time,
+            }
+        )
+
+    return DailyHabitChecklist(
+        target_date=target_date, items=checklist_items, total=len(checklist_items)
+    )
 
 
 @router.post("/", response_model=HabitInDB)
@@ -559,85 +594,6 @@ async def get_habit_streak_info(
     )
 
     return streak_info
-
-
-@router.get("/daily-checklist", response_model=DailyHabitChecklist)
-async def get_daily_habit_checklist(
-    target_date: date = Query(None, description="目标日期，默认为 today"),
-    current_user: UserModel = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """获取每日习惯清单"""
-    if target_date is None:
-        target_date = datetime.utcnow().date()
-
-    # Get all active habits for user
-    active_habits = (
-        db.query(Habit)
-        .filter(Habit.user_id == current_user.id, Habit.is_active == True)
-        .all()
-    )
-
-    # Get any completions for today
-    today_start = datetime.combine(target_date, datetime.min.time())
-    today_end = datetime.combine(target_date + timedelta(days=1), datetime.min.time())
-
-    completed_ids = set()
-    todays_completions = (
-        db.query(HabitCompletion)
-        .join(Habit)
-        .filter(
-            Habit.user_id == current_user.id,
-            HabitCompletion.completion_date >= today_start,
-            HabitCompletion.completion_date < today_end,
-        )
-        .all()
-    )
-
-    for comp in todays_completions:
-        completed_ids.add(comp.habit_id)
-
-    # Build habit checklist
-    habits_list = []
-    total_count = len(active_habits)
-    completed_count = 0
-
-    for habit in active_habits:
-        is_completed = habit.id in completed_ids
-        if is_completed:
-            completed_count += 1
-
-        habits_list.append(
-            {
-                "id": habit.id,
-                "name": habit.name,
-                "description": habit.description,
-                "category": habit.category.value,
-                "target_value": habit.target_value,
-                "target_unit": habit.target_unit,
-                "completed": is_completed,
-            }
-        )
-
-    checklist = DailyHabitChecklist(
-        date=target_date.isoformat(),
-        habits=habits_list,
-        completed_count=completed_count,
-        total_count=total_count,
-        completion_percentage=round(
-            (completed_count / total_count * 100) if total_count > 0 else 0, 2
-        ),
-    )
-
-    logger.info(
-        "Daily habit checklist retrieved",
-        user_id=current_user.id,
-        date=target_date,
-        total=total_count,
-        completed=completed_count,
-    )
-
-    return checklist
 
 
 # Habit Templates / Recommendations

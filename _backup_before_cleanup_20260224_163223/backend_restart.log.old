@@ -1,0 +1,30 @@
+INFO:     Will watch for changes in these directories: ['/Users/felix/bmad/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [96489] using WatchFiles
+INFO:     Started server process [96508]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-02-24 15:34:23,011 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-02-24 15:34:23,012 INFO sqlalchemy.engine.Engine SELECT 1
+2026-02-24 15:34:23,012 INFO sqlalchemy.engine.Engine [generated in 0.00021s] ()
+2026-02-24 15:34:23,013 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:62695 - "GET /api/v1/health HTTP/1.1" 200 OK
+2026-02-24 15:34:23,123 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-02-24 15:34:23,124 INFO sqlalchemy.engine.Engine SELECT 1
+2026-02-24 15:34:23,124 INFO sqlalchemy.engine.Engine [cached since 0.1119s ago] ()
+2026-02-24 15:34:23,124 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:62779 - "GET /api/v1/health HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/core/qwen_config.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [96508]
+INFO:     Started server process [98790]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/core/qwen_config.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [98790]
+WARNING:  WatchFiles detected changes in 'app/core/qwen_config.py'. Reloading...

@@ -30,6 +30,8 @@ class AIResponse(BaseModel):
     is_fusion: Optional[bool] = False
     fusion_roles: Optional[list] = None
     notification: Optional[str] = None
+    # Conversation ID
+    conversation_id: Optional[int] = None
 
     class Config:
         from_attributes = True

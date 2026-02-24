@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.endpoints.auth import get_current_active_user
 from app.core.database import get_db
 from app.models.user import User as UserModel
+from app.models.habit import Habit, HabitCompletion
 from app.schemas.habit import (
     HabitCompletionCreate,
     HabitCompletionInDB,
@@ -28,59 +29,54 @@ router = APIRouter()
 
 @router.get("/", response_model=List[HabitInDB])
 async def get_habits(
-    active_only: bool = Query(True, description="是否只返回活跃习惯"),
-    category: Optional[str] = Query(None, description="按类别过滤"),
     current_user: UserModel = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """获取用户习惯列表"""
-    logger.info("Getting user habits", user_id=current_user.id)
+    """获取用户的所有习惯"""
+    logger.info("Getting all habits", user_id=current_user.id)
+    habits = db.query(Habit).filter(Habit.user_id == current_user.id).all()
+    return habits
+
+
+# IMPORTANT: More specific routes must come BEFORE routes with path parameters
+@router.get("/daily-checklist")
+async def get_daily_checklist(
+    target_date: Optional[date] = Query(None, description="目标日期（默认今天）"),
+    current_user: UserModel = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """获取每日习惯检查清单"""
+    logger.info(
+        "Getting daily checklist", user_id=current_user.id, target_date=target_date
+    )
 
     habit_service = get_habit_service(db)
 
     try:
-        habits = habit_service.get_user_habits(
-            current_user, active_only=active_only, category=category
-        )
+        checklist = habit_service.get_daily_checklist(current_user, target_date)
 
-        return habits
+        return checklist
 
     except Exception as e:
-        logger.error("Failed to get habits", user_id=current_user.id, error=str(e))
+        logger.error(
+            "Failed to get daily checklist", user_id=current_user.id, error=str(e)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve habits",
+            detail="Failed to get daily checklist",
         )
 
 
-@router.post("/", response_model=HabitInDB, status_code=status.HTTP_201_CREATED)
-async def create_habit(
-    habit_data: HabitCreate,
+@router.get("/recommendations", response_model=List[HabitRecommendation])
+async def get_habit_recommendations(
     current_user: UserModel = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """创建新习惯"""
-    logger.info("Creating new habit", user_id=current_user.id)
-
+    """获取习惯推荐"""
+    logger.info("Getting habit recommendations", user_id=current_user.id)
     habit_service = get_habit_service(db)
-
-    try:
-        habit = habit_service.create_habit(current_user, habit_data)
-
-        return habit
-
-    except ValueError as e:
-        logger.warning("Failed to create habit", user_id=current_user.id, error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-    except Exception as e:
-        logger.error("Failed to create habit", user_id=current_user.id, error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create habit",
-        )
+    recommendations = habit_service.get_habit_recommendations(current_user)
+    return recommendations
 
 
 @router.get("/{habit_id}", response_model=HabitWithCompletions)
@@ -335,57 +331,4 @@ async def get_habit_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve habit stats",
-        )
-
-
-@router.get("/daily-checklist")
-async def get_daily_checklist(
-    target_date: Optional[date] = Query(None, description="目标日期（默认今天）"),
-    current_user: UserModel = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """获取每日习惯检查清单"""
-    logger.info(
-        "Getting daily checklist", user_id=current_user.id, target_date=target_date
-    )
-
-    habit_service = get_habit_service(db)
-
-    try:
-        checklist = habit_service.get_daily_checklist(current_user, target_date)
-
-        return checklist
-
-    except Exception as e:
-        logger.error(
-            "Failed to get daily checklist", user_id=current_user.id, error=str(e)
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve daily checklist",
-        )
-
-
-@router.get("/recommendations", response_model=List[HabitRecommendation])
-async def get_habit_recommendations(
-    current_user: UserModel = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    """获取习惯建议"""
-    logger.info("Getting habit recommendations", user_id=current_user.id)
-
-    habit_service = get_habit_service(db)
-
-    try:
-        recommendations = habit_service.get_habit_recommendations(current_user)
-
-        return recommendations
-
-    except Exception as e:
-        logger.error(
-            "Failed to get recommendations", user_id=current_user.id, error=str(e)
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve habit recommendations",
         )

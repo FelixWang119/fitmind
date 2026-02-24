@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Scale, Plus, TrendingDown } from 'lucide-react';
 
 export default function HealthTracker() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-6">
@@ -64,7 +66,10 @@ export function EmotionalSupport() {
         <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-2xl p-6 text-white">
           <h3 className="text-lg font-semibold mb-2">今日情感签到</h3>
           <p className="text-purple-100 mb-4">记录你今天的感受，获得个性化支持</p>
-          <button className="bg-white text-purple-600 px-4 py-2 rounded-xl font-medium hover:bg-purple-50 transition-colors">
+          <button 
+            onClick={() => navigate('/emotional')}
+            className="bg-white text-purple-600 px-4 py-2 rounded-xl font-medium hover:bg-purple-50 transition-colors"
+          >
             开始签到
           </button>
         </div>
@@ -72,7 +77,10 @@ export function EmotionalSupport() {
         <div className="bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl p-6 text-white">
           <h3 className="text-lg font-semibold mb-2">正念练习</h3>
           <p className="text-teal-100 mb-4">每天10分钟正念练习，减轻压力</p>
-          <button className="bg-white text-teal-600 px-4 py-2 rounded-xl font-medium hover:bg-teal-50 transition-colors">
+          <button 
+            onClick={() => navigate('/emotional')}
+            className="bg-white text-teal-600 px-4 py-2 rounded-xl font-medium hover:bg-teal-50 transition-colors"
+          >
             开始练习
           </button>
         </div>

@@ -21,6 +21,7 @@ const navigation = [
   { name: '习惯追踪', href: '/habits', icon: Target },
   { name: '习惯分析', href: '/habits-stats', icon: BarChart3 },
   { name: '营养管理', href: '/nutrition', icon: Utensils },
+  { name: '饮食记录', href: '/diet-tracking', icon: Utensils },
   { name: '健康记录', href: '/health', icon: Activity },
   { name: '健康评估', href: '/health/assessment', icon: ClipboardCheck },
   { name: '情感支持', href: '/emotional', icon: Heart },

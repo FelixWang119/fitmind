@@ -169,45 +169,62 @@ def client(db_session) -> Generator[TestClient, None, None]:
 
 @pytest.fixture(scope="function")
 def test_user(db_session) -> "User":
-    """创建测试用户，返回 User 对象 - 使用数据工厂生成唯一数据"""
+    """创建测试用户，返回 User 对象 - 使用集中式测试用户管理系统"""
     from app.models.user import User
-    from app.services.auth_service import get_password_hash
-    from datetime import datetime
+    from app.core.test_users import test_user_manager
 
-    # 使用数据工厂生成唯一用户数据
-    user_data = create_test_user_data()
+    # 使用集中式测试用户管理系统获取或创建测试用户
+    user_data = test_user_manager.get_or_create_test_user(db_session, "default")
 
-    user = User(
-        email=user_data["email"],
-        username=user_data["username"],
-        hashed_password=get_password_hash("TestPassword123!"),
-        is_active=user_data["is_active"],
-        full_name=user_data["full_name"],
-        created_at=datetime.utcnow(),
-    )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
+    # 从数据库获取用户对象
+    user = db_session.query(User).filter(User.id == user_data["id"]).first()
+
+    if not user:
+        # 如果用户不存在（不应该发生），回退到原始创建逻辑
+        from app.services.auth_service import get_password_hash
+        from datetime import datetime
+
+        user_data_fallback = create_test_user_data()
+        user = User(
+            email=user_data_fallback["email"],
+            username=user_data_fallback["username"],
+            hashed_password=get_password_hash("TestPassword123!"),
+            is_active=user_data_fallback["is_active"],
+            full_name=user_data_fallback["full_name"],
+            created_at=datetime.utcnow(),
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
 
     return user
 
 
 @pytest.fixture(scope="function")
-def authenticated_client(client, test_user) -> tuple:
-    """创建已认证的测试客户端"""
-    from app.services.auth_service import create_access_token
-    from datetime import timedelta
+def authenticated_client(client, test_user, db_session) -> tuple:
+    """创建已认证的测试客户端 - 使用集中式测试用户管理系统获取令牌"""
+    from app.core.test_users import test_user_manager
 
-    # 创建访问令牌 - 注意：必须包含 email 字段，verify_token 需要它
-    access_token = create_access_token(
-        data={
-            "sub": str(test_user.id),  # user_id as string for token
-            "email": test_user.email,
-            "user_id": test_user.id,
-        },
-        expires_delta=timedelta(minutes=30),
-    )
+    # 使用集中式测试用户管理系统获取令牌
+    token = test_user_manager.get_test_user_token(db_session, "default")
 
-    headers = {"Authorization": f"Bearer {access_token}"}
+    if not token:
+        # 如果无法获取令牌，回退到原始创建逻辑
+        from app.services.auth_service import create_access_token
+        from datetime import timedelta
+
+        access_token_expires = timedelta(minutes=30)
+        token = create_access_token(
+            data={
+                "sub": str(test_user.id),
+                "email": test_user.email,
+                "user_id": test_user.id,
+            },
+            expires_delta=access_token_expires,
+        )
+
+    # 设置认证头
+    headers = {"Authorization": f"Bearer {token}"}
+    client.headers.update(headers)
 
     return client, headers, test_user

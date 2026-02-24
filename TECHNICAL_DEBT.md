@@ -496,3 +496,123 @@ API 变更未及时更新文档：
 **维护者**: Development Team  
 **审查周期**: 每季度审查一次  
 **最后审查日期**: 2026-02-24
+
+---
+
+## 新增技术债务 (2026-02-24 补充)
+
+### FE-004: 历史日期餐食记录查看
+
+**优先级**: P2 - 中  
+**发现日期**: 2026-02-24  
+**状态**: ⏳ 待处理
+
+#### 问题描述
+
+当前饮食记录页面**只能显示今日餐食**，无法查看历史记录：
+- `selectedDate` 硬编码为今天
+- 没有日期选择器 UI
+- `setSelectedDate` 被注释掉未使用
+
+**当前代码**:
+```typescript
+const [selectedDate] = useState<string>(() => {
+  // 固定为今天，无法切换
+  return new Date().toISOString().split('T')[0];
+});
+// setSelectedDate 暂未使用 ❌
+```
+
+#### 用户影响
+
+- ❌ 无法查看昨天的饮食记录
+- ❌ 无法回顾历史饮食情况
+- ❌ 无法对比不同时期的饮食习惯
+- ❌ 右侧区域标题显示"今日餐食记录"，暗示只能看今天
+
+#### 期望功能
+
+1. **日期选择器**
+   - 显示日历控件
+   - 支持选择任意历史日期
+   - 快速切换按钮（昨天、今天、明天）
+
+2. **数据刷新**
+   - 切换日期时自动加载对应数据
+   - 显示选中日期的餐食记录
+   - 更新标题（如"2026-02-23 餐食记录"）
+
+3. **限制规则**
+   - 不能选择未来日期（除今天外）
+   - 可以选择过去任意日期
+   - 默认显示今天
+
+#### 技术方案
+
+**方案 A: 使用原生 date input（简单）**
+```tsx
+<div className="mb-6">
+  <label className="text-sm font-medium text-gray-700 mb-2">
+    选择日期
+  </label>
+  <input
+    type="date"
+    value={selectedDate}
+    onChange={(e) => setSelectedDate(e.target.value)}
+    max={new Date().toISOString().split('T')[0]} // 不能选未来
+    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+  />
+</div>
+```
+
+**方案 B: 自定义日期选择器（推荐）**
+```tsx
+<div className="flex items-center justify-between mb-6">
+  <button 
+    onClick={() => goToPreviousDay()}
+    className="p-2 hover:bg-gray-100 rounded-lg"
+  >
+    <ChevronLeft className="w-5 h-5" />
+  </button>
+  
+  <div className="text-lg font-semibold">
+    {formatDate(selectedDate)} // "2026 年 2 月 24 日"
+  </div>
+  
+  <button 
+    onClick={() => goToToday()}
+    className="text-sm text-blue-600 hover:underline"
+  >
+    今天
+  </button>
+  
+  <button 
+    onClick={() => goToNextDay()}
+    className="p-2 hover:bg-gray-100 rounded-lg"
+    disabled={selectedDate === today} // 今天不能往后
+  >
+    <ChevronRight className="w-5 h-5" />
+  </button>
+</div>
+```
+
+#### 需要修改的文件
+
+- `frontend/src/pages/DietTracking.tsx` - 添加日期选择器 UI 和逻辑
+- `frontend/src/api/client.ts` - 确认 API 支持日期参数
+
+#### 验收标准
+
+- [ ] 日期选择器 UI 完整
+- [ ] 可以切换历史日期
+- [ ] 切换后数据正确加载
+- [ ] 标题显示选中日期
+- [ ] 不能选择未来日期
+- [ ] 默认显示今天
+- [ ] 移动端适配良好
+
+#### 相关工作
+
+- 后端 API 已支持：`GET /api/v1/meals/daily-nutrition-summary?target_date=YYYY-MM-DD`
+- 前端 `selectedDate` 状态已存在，需恢复 `setSelectedDate`
+

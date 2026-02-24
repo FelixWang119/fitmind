@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Trash2, X, ChevronDown, ChevronUp, Scale } from 'lucide-react';
+import { Camera, Trash2, X, ChevronDown, ChevronUp, Scale, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 // import { useAuthStore } from '../store/authStore'; // 暂未使用
 import { api } from '../api/client';
 
@@ -47,15 +47,28 @@ const DietTracking: React.FC = () => {
   // user 变量已移除，因为当前没有使用
   // const { user } = useAuthStore();
   
-  // 餐食记录状态
-  const [selectedDate] = useState<string>(() => {
+  // 日期选择功能 - 恢复 setSelectedDate
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   });
-  // setSelectedDate 暂未使用
+  
+  // 日历选择器显示状态
+  const [showCalendar, setShowCalendar] = useState<boolean>(false);
+  
+  // 获取今天的日期字符串
+  const getTodayStr = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  const today = getTodayStr();
   const [meals, setMeals] = useState<MealRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   // error 状态已移除，改用 alert 提示错误
@@ -92,6 +105,123 @@ const DietTracking: React.FC = () => {
     const hour = hourMap[mealType] || '12';
     return `${selectedDate}T${hour}:00:00${getTimezoneOffset()}`;
   };
+
+  // 日期导航函数
+  const goToPreviousDay = () => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() - 1);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${year}-${month}-${day}`);
+  };
+
+  const goToNextDay = () => {
+    const today = new Date();
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + 1);
+    // 不能超过今天
+    if (date > today) return;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${year}-${month}-${day}`);
+  };
+
+  const goToToday = () => {
+    setSelectedDate(today);
+  };
+
+  // 格式化日期显示
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return '今天';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return '昨天';
+    } else {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      const weekDay = weekDays[date.getDay()];
+      return `${month}月${day}日 ${weekDay}`;
+    }
+  };
+  
+  // 检查是否是今天
+  const isToday = selectedDate === today;
+  
+  // 生成日历日期
+  const generateCalendarDays = () => {
+    const date = new Date(selectedDate);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    // 当月第一天
+    const firstDay = new Date(year, month, 1);
+    // 当月最后一天
+    const lastDay = new Date(year, month + 1, 0);
+    // 第一天是周几
+    const firstDayWeek = firstDay.getDay();
+    
+    const days = [];
+    
+    // 添加上个月的日期
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = firstDayWeek - 1; i >= 0; i--) {
+      const day = prevMonthLastDay - i;
+      const prevDate = new Date(year, month - 1, day);
+      const dateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      days.push({
+        date: dateStr,
+        day,
+        isCurrentMonth: false,
+        isToday: dateStr === today,
+        isSelected: dateStr === selectedDate,
+        isFuture: prevDate > new Date()
+      });
+    }
+    
+    // 添加当月日期
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const currentDate = new Date(year, month, day);
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      days.push({
+        date: dateStr,
+        day,
+        isCurrentMonth: true,
+        isToday: dateStr === today,
+        isSelected: dateStr === selectedDate,
+        isFuture: currentDate > new Date()
+      });
+    }
+    
+    // 添加下个月的日期（补齐 6 行）
+    const remainingDays = 42 - days.length;
+    for (let day = 1; day <= remainingDays; day++) {
+      const nextDate = new Date(year, month + 1, day);
+      const dateStr = `${year}-${String(month + 2).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      days.push({
+        date: dateStr,
+        day,
+        isCurrentMonth: false,
+        isToday: dateStr === today,
+        isSelected: dateStr === selectedDate,
+        isFuture: nextDate > new Date()
+      });
+    }
+    
+    return days;
+  };
+  
+  const calendarDays = generateCalendarDays();
+  const currentMonth = new Date(selectedDate).getMonth();
+  const currentYear = new Date(selectedDate).getFullYear();
 
   // 餐次类型选项
   const mealTypeOptions = [
@@ -425,19 +555,158 @@ const DietTracking: React.FC = () => {
             </div>
           </div>
 
-          {/* 右侧：今日餐食记录 */}
+          {/* 右侧：餐食记录 */}
           <div>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">今日餐食记录</h2>
-                {meals.length > 0 && (
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium">{meals.length}</span> 餐 · 
-                    <span className="font-medium text-red-600 ml-1">
-                      {getTodayTotalCalories()}
-                    </span> 大卡
+              {/* 日期选择器 */}
+              <div className="relative mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={goToPreviousDay}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="前一天"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-600" />
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowCalendar(!showCalendar)}
+                      className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="选择日期"
+                    >
+                      <Calendar className="w-5 h-5 text-gray-500" />
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {formatDate(selectedDate)}
+                      </h2>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showCalendar ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    <button
+                      onClick={goToNextDay}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      disabled={isToday}
+                      title="后一天"
+                    >
+                      <ChevronRight className="w-5 h-5 text-gray-600" />
+                    </button>
                   </div>
+                  
+                  {!isToday && (
+                    <button
+                      onClick={goToToday}
+                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                    >
+                      回到今天
+                    </button>
+                  )}
+                </div>
+                
+                {/* 日历弹出框 */}
+                {showCalendar && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setShowCalendar(false)}
+                    />
+                    <div className="absolute left-0 top-full mt-2 bg-white rounded-xl shadow-lg border border-gray-200 p-4 z-20 min-w-[320px]">
+                      {/* 年月标题 */}
+                      <div className="flex items-center justify-between mb-4">
+                        <button
+                          onClick={() => {
+                            const date = new Date(currentYear, currentMonth - 1, 1);
+                            setSelectedDate(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`);
+                          }}
+                          className="p-1 hover:bg-gray-100 rounded"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <span className="text-lg font-semibold">
+                          {currentYear}年 {currentMonth + 1}月
+                        </span>
+                        <button
+                          onClick={() => {
+                            const date = new Date(currentYear, currentMonth + 1, 1);
+                            setSelectedDate(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`);
+                          }}
+                          className="p-1 hover:bg-gray-100 rounded"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                      
+                      {/* 星期标题 */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {['日', '一', '二', '三', '四', '五', '六'].map((day, i) => (
+                          <div key={i} className="text-center text-xs text-gray-500 py-1">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* 日期网格 */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {calendarDays.map((item, index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              if (!item.isFuture) {
+                                setSelectedDate(item.date);
+                                setShowCalendar(false);
+                              }
+                            }}
+                            disabled={item.isFuture}
+                            className={`
+                              h-9 rounded-lg text-sm font-medium transition-colors
+                              ${!item.isCurrentMonth ? 'text-gray-400' : ''}
+                              ${item.isToday ? 'bg-blue-100 text-blue-600' : ''}
+                              ${item.isSelected && !item.isToday ? 'bg-blue-600 text-white' : ''}
+                              ${item.isFuture ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-gray-100'}
+                              ${!item.isFuture && !item.isSelected && item.isCurrentMonth ? 'text-gray-900' : ''}
+                            `}
+                          >
+                            {item.day}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* 底部快捷按钮 */}
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            goToToday();
+                            setShowCalendar(false);
+                          }}
+                          className="flex-1 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          今天
+                        </button>
+                        <button
+                          onClick={() => {
+                            const date = new Date();
+                            date.setDate(date.getDate() - 1);
+                            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            setSelectedDate(dateStr);
+                            setShowCalendar(false);
+                          }}
+                          className="flex-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          昨天
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 )}
+              </div>
+              
+              {/* 餐食统计 */}
+              <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">{meals.length}</span> 餐
+                </div>
+                <div className="text-sm text-gray-600">
+                  总热量：<span className="font-medium text-red-600">{getTodayTotalCalories()}</span> 大卡
+                </div>
               </div>
               
               {loading && !meals.length ? (
@@ -450,8 +719,12 @@ const DietTracking: React.FC = () => {
                   <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <span className="text-gray-400 text-2xl">🍽️</span>
                   </div>
-                  <p className="text-gray-600">今日还没有记录餐食</p>
-                  <p className="text-sm text-gray-500 mt-1">点击左侧开始记录第一餐</p>
+                  <p className="text-gray-600">
+                    {isToday ? '今日还没有记录餐食' : `${formatDate(selectedDate)}没有记录餐食`}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {isToday ? '点击左侧开始记录第一餐' : '切换到今天或选择其他日期查看'}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">

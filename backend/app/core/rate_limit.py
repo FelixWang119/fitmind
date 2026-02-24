@@ -60,6 +60,10 @@ class RateLimiter:
         self.requests[key].append(current_time)
         return False
 
+    def is_allowed(self, key: str) -> bool:
+        """检查是否允许请求（is_rate_limited 的别名）"""
+        return not self.is_rate_limited(key)
+
     def get_remaining_requests(self, key: str) -> int:
         """获取剩余请求次数"""
         current_time = time.time()

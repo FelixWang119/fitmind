@@ -20,13 +20,37 @@ class NutritionService:
     def calculate_bmr(self, user: User) -> float:
         """计算基础代谢率 (BMR)"""
         # 使用 Mifflin-St Jeor 公式
-        weight_kg = (user.initial_weight or 70000) / 1000  # 默认70kg
-        height_cm = user.height or 170  # 默认170cm
-        age_years = user.age or 30  # 默认30岁
+        # 数据库存储的体重单位是克，需要除以1000转换为千克
 
-        if user.gender == "male":
+        # 安全处理用户参数，并确保使用可计算值
+        user_initial_weight = getattr(user, "initial_weight", 70000)
+        user_height = getattr(user, "height", 170)
+        user_age = getattr(user, "age", 30)
+        user_gender = getattr(user, "gender", "male")
+
+        try:
+            # 确保数值为数字类型而不是数据库查询对象
+            weight_in_grams = (
+                float(user_initial_weight) if user_initial_weight is not None else 70000
+            )
+        except (ValueError, TypeError):
+            weight_in_grams = 70000
+
+        try:
+            height_cm = float(user_height) if user_height is not None else 170
+        except (ValueError, TypeError):
+            height_cm = 170
+
+        try:
+            age_years = float(user_age) if user_age is not None else 30
+        except (ValueError, TypeError):
+            age_years = 30
+
+        weight_kg = weight_in_grams / 1000.0  # 从克转换为千克
+
+        if user_gender == "male":
             bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age_years + 5
-        elif user.gender == "female":
+        elif user_gender == "female":
             bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age_years - 161
         else:
             # 中性计算
@@ -47,7 +71,12 @@ class NutritionService:
             "very_active": 1.9,  # 非常活跃
         }
 
-        activity_factor = activity_factors.get(user.activity_level or "sedentary", 1.2)
+        # 安全地处理 activity_level 属性
+        user_activity_level = getattr(user, "activity_level", None)
+        if user_activity_level is None or str(user_activity_level).strip() == "":
+            user_activity_level = "sedentary"
+
+        activity_factor = activity_factors.get(str(user_activity_level), 1.2)
         tdee = bmr * activity_factor
 
         return round(tdee, 2)
@@ -56,19 +85,41 @@ class NutritionService:
         """计算每日卡路里目标"""
         tdee = self.calculate_tdee(user)
 
-        # 根据目标体重计算卡路里赤字/盈余
-        current_weight = user.initial_weight or 70000
-        target_weight = user.target_weight or 65000
+        # 从数据库安全检索和转换体重数据并处理null值
+        try:
+            initial_weight_value = user.initial_weight
+            target_weight_value = user.target_weight
 
-        weight_difference = current_weight - target_weight
+            current_weight = (
+                float(initial_weight_value)
+                if initial_weight_value is not None and initial_weight_value != ""
+                else 70000.0
+            )
+            target_weight = (
+                float(target_weight_value)
+                if target_weight_value is not None and target_weight_value != ""
+                else 65000.0
+            )
+        except (TypeError, ValueError, AttributeError):
+            # 如果数值不合法使用默认值
+            current_weight = 70000.0
+            target_weight = 65000.0
 
-        if weight_difference > 0:
+        weight_difference_in_kg = (
+            current_weight - target_weight
+        ) / 1000.0  # 转换为公斤
+
+        if weight_difference_in_kg > 0:
             # 需要减重
-            calorie_deficit = min(500, weight_difference * 7.7)  # 最大500卡赤字
+            calorie_deficit = min(
+                500, weight_difference_in_kg * 7700
+            )  # 每公斤差值约7700卡路里（近似）
             target_calories = max(tdee - calorie_deficit, tdee * 0.8)  # 最少减少20%
-        elif weight_difference < 0:
+        elif weight_difference_in_kg < 0:
             # 需要增重
-            calorie_surplus = min(300, abs(weight_difference) * 7.7)  # 最大300卡盈余
+            calorie_surplus = min(
+                300, abs(weight_difference_in_kg) * 7700
+            )  # 最大300卡盈余
             target_calories = tdee + calorie_surplus
         else:
             # 维持体重
@@ -79,18 +130,50 @@ class NutritionService:
             "target": round(target_calories, 2),
             "weight_loss": round(tdee * 0.85, 2),  # 15% 赤字
             "weight_gain": round(tdee * 1.15, 2),  # 15% 盈余
-            "weight_difference": weight_difference,
+            "weight_difference_kg": round(weight_difference_in_kg, 2),
         }
 
     def calculate_macronutrients(
         self, user: User, target_calories: float
     ) -> Dict[str, float]:
         """计算宏量营养素目标"""
-        # 蛋白质: 1.6-2.2 g/kg 体重 (减重期取高值)
-        weight_kg = (user.initial_weight or 70000) / 1000
-        current_weight = user.initial_weight or 70000
-        target_weight = user.target_weight or 65000
-        protein_per_kg = 2.2 if target_weight < current_weight else 1.8
+        # 从数据库安全获取体重数据并处理None和空值
+        try:
+            initial_weight_value = user.initial_weight
+            target_wt_value = (
+                user.target_weight if hasattr(user, "target_weight") else None
+            )
+
+            weight_in_grams = (
+                float(initial_weight_value)
+                if initial_weight_value is not None and initial_weight_value != ""
+                else 70000
+            )
+            weight_kg = weight_in_grams / 1000.0
+
+            # 获取目标体重以确定蛋白质比例
+            target_wt = (
+                float(target_wt_value)
+                if target_wt_value is not None and target_wt_value != ""
+                else 65000
+            )
+            current_wt = (
+                float(initial_weight_value)
+                if initial_weight_value is not None and initial_weight_value != ""
+                else 70000
+            )
+        except (TypeError, ValueError, AttributeError):
+            weight_kg = 70.0
+            target_wt = 65000.0
+            current_wt = 70000.0
+
+        if target_wt < current_wt:
+            # 减重时期取更高蛋白质比例
+            protein_per_kg = 2.2
+        else:
+            # 维持或增重时期蛋白质比例
+            protein_per_kg = 1.8
+
         protein_g = weight_kg * protein_per_kg
         protein_calories = protein_g * 4
 
@@ -114,51 +197,172 @@ class NutritionService:
 
     def get_dietary_recommendations(self, user: User) -> Dict[str, any]:
         """获取饮食建议"""
-        calorie_targets = self.calculate_calorie_target(user)
-        target_calories = calorie_targets.get("target", calorie_targets["maintenance"])
-        macros = self.calculate_macronutrients(user, target_calories)
+        try:
+            calorie_targets = self.calculate_calorie_target(user)
+            target_calories = calorie_targets.get(
+                "target", calorie_targets["maintenance"]
+            )
+            macros = self.calculate_macronutrients(user, target_calories)
 
-        # 根据饮食偏好生成建议
-        dietary_prefs = (
-            user.dietary_preferences.split(",") if user.dietary_preferences else []
-        )
+            # 安全获取饮食偏好，处理None值
+            dietary_preferences_raw = getattr(user, "dietary_preferences", "")
+            dietary_prefs = (
+                dietary_preferences_raw.split(",") if dietary_preferences_raw else []
+            )
 
-        meal_suggestions = self._generate_meal_suggestions(
-            target_calories, macros, dietary_prefs
-        )
+            meal_suggestions = self._generate_meal_suggestions(
+                target_calories, macros, dietary_prefs
+            )
 
-        return {
-            "calorie_targets": calorie_targets,
-            "macronutrients": macros,
-            "meal_suggestions": meal_suggestions,
-            "hydration_goal": self._calculate_hydration_goal(user),
-            "supplement_recommendations": self._get_supplement_recommendations(user),
-        }
+            return {
+                "calorie_targets": calorie_targets,
+                "macronutrients": macros,
+                "meal_suggestions": meal_suggestions,
+                "hydration_goal": self._calculate_hydration_goal(user),
+                "supplement_recommendations": self._get_supplement_recommendations(
+                    user
+                ),
+            }
+        except Exception as e:
+            logger.error(f"Error getting dietary recommendations: {str(e)}")
+            # 返回安全默认值以防止整个功能崩溃
+            return {
+                "calorie_targets": {
+                    "maintenance": 2000.0,
+                    "target": 1800.0,
+                    "weight_loss": 1700.0,
+                    "weight_gain": 2300.0,
+                    "weight_difference_kg": 0.0,
+                },
+                "macronutrients": {
+                    "protein_g": 150.0,
+                    "fat_g": 50.0,
+                    "carb_g": 200.0,
+                    "protein_percentage": 25.0,
+                    "fat_percentage": 25.0,
+                    "carb_percentage": 50.0,
+                },
+                "meal_suggestions": {
+                    "breakfast": [
+                        {
+                            "name": "默认早餐",
+                            "description": "燕麦片配牛奶和水果",
+                            "calories": 350,
+                            "protein": 15,
+                            "fat": 10,
+                            "carb": 45,
+                        }
+                    ],
+                    "lunch": [
+                        {
+                            "name": "默认午餐",
+                            "description": "三明治配沙拉",
+                            "calories": 450,
+                            "protein": 25,
+                            "fat": 15,
+                            "carb": 50,
+                        }
+                    ],
+                    "dinner": [
+                        {
+                            "name": "默认晚餐",
+                            "description": "烤鸡胸肉配蔬菜",
+                            "calories": 400,
+                            "protein": 30,
+                            "fat": 12,
+                            "carb": 35,
+                        }
+                    ],
+                    "snack": [
+                        {
+                            "name": "默认加餐",
+                            "description": "希腊酸奶配坚果",
+                            "calories": 200,
+                            "protein": 15,
+                            "fat": 12,
+                            "carb": 15,
+                        }
+                    ],
+                },
+                "hydration_goal": 2450.0,
+                "supplement_recommendations": ["维生素D: 1000-2000 IU/天"],
+            }
 
     def _generate_meal_suggestions(
         self, target_calories: float, macros: Dict[str, float], dietary_prefs: List[str]
     ) -> Dict[str, List[Dict]]:
         """生成餐食建议"""
-        # 分配每餐热量 (早餐25%, 午餐35%, 晚餐30%, 加餐10%)
-        meal_distribution = {
-            "breakfast": 0.25,
-            "lunch": 0.35,
-            "dinner": 0.30,
-            "snack": 0.10,
-        }
+        try:
+            # 分配每餐热量 (早餐25%, 午餐35%, 晚餐30%, 加餐10%)
+            meal_distribution = {
+                "breakfast": 0.25,
+                "lunch": 0.35,
+                "dinner": 0.30,
+                "snack": 0.10,
+            }
 
-        suggestions = {}
-        for meal, percentage in meal_distribution.items():
-            meal_calories = target_calories * percentage
-            meal_protein = macros["protein_g"] * percentage
-            meal_fat = macros["fat_g"] * percentage
-            meal_carb = macros["carb_g"] * percentage
+            suggestions = {}
+            for meal, percentage in meal_distribution.items():
+                meal_calories = target_calories * percentage
+                meal_protein = macros["protein_g"] * percentage
+                meal_fat = macros["fat_g"] * percentage
+                meal_carb = macros["carb_g"] * percentage
 
-            suggestions[meal] = self._get_meal_options(
-                meal, meal_calories, meal_protein, meal_fat, meal_carb, dietary_prefs
-            )
+                suggestions[meal] = self._get_meal_options(
+                    meal,
+                    meal_calories,
+                    meal_protein,
+                    meal_fat,
+                    meal_carb,
+                    dietary_prefs,
+                )
 
-        return suggestions
+            return suggestions
+        except Exception as e:
+            logger.error(f"Error generating meal suggestions: {str(e)}")
+            # 返回默认餐食建议
+            return {
+                "breakfast": [
+                    {
+                        "name": "默认早餐",
+                        "description": "燕麦片配牛奶和水果",
+                        "calories": 350,
+                        "protein": 15,
+                        "fat": 10,
+                        "carb": 45,
+                    }
+                ],
+                "lunch": [
+                    {
+                        "name": "默认午餐",
+                        "description": "三明治配沙拉",
+                        "calories": 450,
+                        "protein": 25,
+                        "fat": 15,
+                        "carb": 50,
+                    }
+                ],
+                "dinner": [
+                    {
+                        "name": "默认晚餐",
+                        "description": "烤鸡胸肉配蔬菜",
+                        "calories": 400,
+                        "protein": 30,
+                        "fat": 12,
+                        "carb": 35,
+                    }
+                ],
+                "snack": [
+                    {
+                        "name": "默认加餐",
+                        "description": "希腊酸奶配坚果",
+                        "calories": 200,
+                        "protein": 15,
+                        "fat": 12,
+                        "carb": 15,
+                    }
+                ],
+            }
 
     def _get_meal_options(
         self,
@@ -281,26 +485,46 @@ class NutritionService:
 
     def _calculate_hydration_goal(self, user: User) -> float:
         """计算每日饮水目标 (毫升)"""
-        weight_kg = (user.initial_weight or 70000) / 1000
-        # 30-35 ml/kg 体重
-        hydration_ml = weight_kg * 35
-        return round(hydration_ml, 0)
+        # 先获取并验证用户的体重数据
+        try:
+            initial_weight = user.initial_weight
+            weight_kg = (
+                float(initial_weight) / 1000.0
+                if initial_weight is not None and initial_weight != ""
+                else 70.0
+            )
+            # 30-35 ml/kg 体重
+            hydration_ml = weight_kg * 35
+            return round(hydration_ml, 0)
+        except (TypeError, ValueError, AttributeError):
+            # 如果数值有问题使用默认值
+            return 2450.0  # 70kg * 35ml/kg
 
     def _get_supplement_recommendations(self, user: User) -> List[str]:
         """获取补充剂建议"""
-        recommendations = []
+        try:
+            recommendations = []
 
-        # 基础补充剂
-        recommendations.append("维生素D: 1000-2000 IU/天 (尤其日照不足时)")
+            # 基础补充剂
+            recommendations.append("维生素D: 1000-2000 IU/天 (尤其日照不足时)")
 
-        if user.gender == "female" and user.age and user.age > 50:
-            recommendations.append("钙: 1200 mg/天 (预防骨质疏松)")
+            # 安全地访问用户属性
+            user_gender = getattr(user, "gender", None)
+            user_age = getattr(user, "age", None)
+            dietary_prefs = getattr(user, "dietary_preferences", "")
 
-        if "vegetarian" in (user.dietary_preferences or ""):
-            recommendations.append("维生素B12: 2.4 mcg/天")
-            recommendations.append("铁: 注意补充植物性铁源")
+            if user_gender == "female" and user_age and user_age > 50:
+                recommendations.append("钙: 1200 mg/天 (预防骨质疏松)")
 
-        return recommendations
+            if "vegetarian" in dietary_prefs or "vegan" in dietary_prefs:
+                recommendations.append("维生素B12: 2.4 mcg/天")
+                recommendations.append("铁: 注意补充植物性铁源")
+
+            return recommendations
+        except Exception as e:
+            logger.error(f"Error getting supplement recommendation: {str(e)}")
+            # 返回安全的默认推荐
+            return ["维生素D: 1000-2000 IU/天 (尤其日照不足时)"]
 
     def analyze_food_log(self, food_items: List[Dict]) -> Dict[str, any]:
         """分析食物日志"""

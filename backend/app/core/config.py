@@ -38,7 +38,8 @@ class Settings(BaseSettings):
     QWEN_API_URL: str = (
         "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
     )
-    QWEN_MODEL: str = "qwen-plus"
+    QWEN_TEXT_MODEL: str = "qwen-turbo"  # 文本模型
+    QWEN_VISION_MODEL: str = "qwen-vl-max"  # 视觉模型
 
     # Redis配置（用于缓存和会话）
     REDIS_URL: Optional[str] = None

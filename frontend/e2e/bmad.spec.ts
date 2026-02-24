@@ -4,7 +4,7 @@ test.describe('BMAD E2E Tests', () => {
   
   test.beforeEach(async ({ page }) => {
     // Go to the app
-    await page.goto('http://localhost:5173');
+    await page.goto('http://localhost:3000');
   });
 
   test.describe('User Authentication', () => {

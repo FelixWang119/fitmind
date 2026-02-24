@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, X } from 'lucide-react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 
 interface Message {
   id: number;
@@ -58,7 +59,77 @@ export function Chat() {
   const [notification, setNotification] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<number | undefined>(undefined);
   const [manualMode, setManualMode] = useState(false);
+  const [conversations, setConversations] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+
+  // Load conversations on mount, but only after auth is checked
+  useEffect(() => {
+    console.log('Auth state:', { authLoading, isAuthenticated });
+    if (!authLoading && isAuthenticated) {
+      loadConversations();
+    }
+  }, [authLoading, isAuthenticated]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">请先登录以查看对话历史</p>
+          <a href="/login" className="text-blue-600 hover:underline">登录</a>
+        </div>
+      </div>
+    );
+  }
+
+  const loadConversations = async () => {
+    try {
+      console.log('Loading conversations...');
+      const convs = await api.getConversations();
+      console.log('Conversations loaded:', convs);
+      setConversations(convs || []);
+      
+      // If there's a recent conversation, load its messages
+      if (convs && convs.length > 0) {
+        const latestConv = convs[0];
+        console.log('Latest conversation:', latestConv);
+        setConversationId(latestConv.id);
+        setCurrentRole(latestConv.current_role || 'general');
+        
+        // Load messages for this conversation
+        const msgs = await api.getMessages(latestConv.id);
+        console.log('Messages loaded:', msgs);
+        if (msgs && msgs.length > 0) {
+          const formattedMessages: Message[] = msgs.map((msg: any) => ({
+            id: msg.id,
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content,
+            timestamp: msg.created_at,
+          }));
+          setMessages([
+            {
+              id: 0,
+              role: 'assistant',
+              content: '你好！我是你的体重管理AI助手。我可以帮助你制定健康的饮食计划、跟踪你的进度，并提供情感支持。\n\n我可以自动根据你的话题切换角色，你也可以点击下方的按钮手动选择模式。今天有什么我可以帮你的吗？',
+            },
+            ...formattedMessages,
+          ]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load conversations:', err);
+    }
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -129,7 +200,7 @@ export function Chat() {
       const aiMessage: Message = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: response.message,
+        content: response.response || response.message || '',
         timestamp: new Date().toISOString(),
       };
 

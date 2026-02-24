@@ -6,10 +6,43 @@ import base64
 from io import BytesIO
 import structlog
 import httpx
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 import asyncio
 
+from app.core.config import settings
+from app.core.qwen_config import qwen_config
+
 logger = structlog.get_logger(__name__)
+
+
+def get_fallback_data(reason: str = "开发模式") -> Dict[str, Any]:
+    """获取后备数据（当AI分析失败时使用）"""
+    return {
+        "meal_type": "lunch",
+        "items": [
+            {
+                "name": "米饭",
+                "grams": 150,
+                "calories": 174,
+                "protein": 3,
+                "carbs": 38,
+                "fat": 0.5,
+            },
+            {
+                "name": "红烧肉",
+                "grams": 100,
+                "calories": 350,
+                "protein": 12,
+                "carbs": 8,
+                "fat": 30,
+            },
+        ],
+        "total_calories": 524,
+        "total_protein": 15,
+        "total_carbs": 46,
+        "total_fat": 30.5,
+        "notes": f"模拟数据（{reason}）",
+    }
 
 
 class FoodItemAnalysis:
@@ -68,51 +101,33 @@ async def analyze_food_with_qwen_vision(base64_image: str) -> Dict[str, Any]:
     """
     使用Qwen视觉模型分析食物图片
     """
-    api_key = os.environ.get("QWEN_API_KEY")
+    # 使用集中式配置
+    api_key = qwen_config.QWEN_API_KEY
     if not api_key:
         # 如果没有API Key，则返回模拟数据（食材列表格式）
-        return {
-            "meal_type": "lunch",
-            "items": [
-                {
-                    "name": "米饭",
-                    "grams": 150,
-                    "calories": 174,
-                    "protein": 3,
-                    "carbs": 38,
-                    "fat": 0.5,
-                },
-                {
-                    "name": "红烧肉",
-                    "grams": 100,
-                    "calories": 350,
-                    "protein": 12,
-                    "carbs": 8,
-                    "fat": 30,
-                },
-            ],
-            "total_calories": 524,
-            "total_protein": 15,
-            "total_carbs": 46,
-            "total_fat": 30.5,
-            "notes": "开发模式模拟数据",
-        }
+        logger.warning("QWEN_API_KEY not set, returning mock data")
+        return get_fallback_data("未设置API Key")
 
-    url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/generation/image2text"
+    # 使用集中式配置的URL和模型
+    url = qwen_config.QWEN_API_URL
+    headers = qwen_config.get_headers()
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    # 使用视觉模型
+    model_to_try = qwen_config.QWEN_VISION_MODEL
 
-    # 修改 prompt 要求返回食材列表
     payload = {
-        "model": "qwen-vl-max",
-        "input": {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"image": f"data:image/jpeg;base64,{base64_image}"},
-                        {
-                            "text": """请分析这张食物图片，识别出所有食材及其估计克数，并计算营养成分。请按照以下JSON格式返回分析结果：
+        "model": model_to_try,  # 使用视觉语言模型
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                    },
+                    {
+                        "type": "text",
+                        "text": """请分析这张食物图片，识别出所有食材及其估计克数，并计算营养成分。请按照以下JSON格式返回分析结果：
 {
     "meal_type": "breakfast/lunch/dinner/snack",
     "items": [
@@ -126,25 +141,28 @@ async def analyze_food_with_qwen_vision(base64_image: str) -> Dict[str, Any]:
         }
     ],
     "notes": "营养评价和建议"
-}"""
-                        },
-                    ],
-                }
-            ]
-        },
-        "parameters": {"temperature": 0.1},
+}
+
+请只返回JSON格式，不要有其他文本。""",
+                    },
+                ],
+            }
+        ],
+        "temperature": qwen_config.get_temperature_for_model(model_to_try),
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        logger.info(f"Calling Qwen vision API with model: {model_to_try}")
+        timeout = qwen_config.get_timeout_for_model(model_to_try)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
 
             result = response.json()
 
-            # 解析模型返回的结果
-            if "output" in result and "choices" in result["output"]:
-                content_text = result["output"]["choices"][0]["message"]["content"]
+            # 解析模型返回的结果 - 兼容模式格式
+            if "choices" in result:
+                content_text = result["choices"][0]["message"]["content"]
 
                 # 尝试從返回文本解析JSON
                 try:
@@ -162,46 +180,85 @@ async def analyze_food_with_qwen_vision(base64_image: str) -> Dict[str, Any]:
                         for item_data in items_data:
                             food_item = FoodItemAnalysis(
                                 name=item_data.get("name", "未知食材"),
-                                grams=float(item_data.get("grams", 0)),
-                                calories=float(item_data.get("calories", 0)),
-                                protein=float(item_data.get("protein", 0)),
-                                carbs=float(item_data.get("carbs", 0)),
-                                fat=float(item_data.get("fat", 0)),
+                                grams=item_data.get("grams", 0),
+                                calories=item_data.get("calories", 0),
+                                protein=item_data.get("protein", 0),
+                                carbs=item_data.get("carbs", 0),
+                                fat=item_data.get("fat", 0),
                             )
                             food_items.append(food_item)
 
-                        # 构建返回结果
-                        meal_type = parsed_data.get("meal_type", "lunch")
-                        analysis_result = MealAnalysisResult(meal_type, food_items)
+                        meal_analysis = MealAnalysisResult(
+                            meal_type=parsed_data.get("meal_type", "lunch"),
+                            items=food_items,
+                        )
 
-                        return analysis_result.to_dict()
+                        result_dict = meal_analysis.to_dict()
+                        result_dict["notes"] = parsed_data.get("notes", "AI分析完成")
+
+                        logger.info(
+                            "Food image analysis successful",
+                            items_count=len(food_items),
+                            total_calories=result_dict["total_calories"],
+                        )
+
+                        return result_dict
                     else:
                         logger.warning(
-                            "Could not parse JSON from Qwen response", response=result
+                            "No JSON found in response, using fallback",
+                            response=content_text[:200],
                         )
-                        return _create_mock_item_result()
+                        # 返回模拟数据作为后备
+                        return get_fallback_data("AI响应格式错误")
+
                 except json.JSONDecodeError as e:
                     logger.error(
-                        "JSON decode error", error=str(e), response=content_text
+                        "Failed to parse JSON from response, using fallback",
+                        error=str(e),
+                        text=content_text[:200],
                     )
-                    return _create_mock_item_result()
+                    # 返回模拟数据作为后备
+                    return get_fallback_data("AI响应解析失败")
 
             else:
-                logger.warning("Unexpected API response format", response=result)
-                raise HTTPException(status_code=500, detail="Qwen API返回格式异常")
+                logger.error(
+                    "Unexpected response format, using fallback",
+                    response=str(result)[:200],
+                )
+                # 返回模拟数据作为后备
+                return get_fallback_data("AI响应格式异常")
 
-    except httpx.HTTPStatusError as e:
+    except httpx.HTTPError as e:
+        # Handle HTTP errors from the API
+        error_msg = str(e)
+
+        # 尝试获取响应体以获取更多错误信息
+        try:
+            if hasattr(e, "response") and e.response:
+                error_detail = e.response.text[:500]
+                logger.error(
+                    "HTTP error from Qwen API, using fallback",
+                    status_code=e.response.status_code,
+                    error_detail=error_detail,
+                )
+                return get_fallback_data(
+                    f"AI服务错误 {e.response.status_code}: {error_detail[:100]}"
+                )
+        except:
+            pass
+
         logger.error(
-            "HTTP error from Qwen API",
-            status_code=e.response.status_code,
-            response=await e.response.aread(),
+            "HTTP error from Qwen API, using fallback",
+            response=error_msg[:200],
         )
-        raise HTTPException(
-            status_code=e.response.status_code, detail=f"Qwen API调用失败: {str(e)}"
-        )
+        # 返回模拟数据作为后备
+        return get_fallback_data(f"AI服务暂时不可用: {error_msg[:100]}")
     except Exception as e:
-        logger.error("Unexpected error calling Qwen API", error=str(e))
-        raise HTTPException(status_code=500, detail=f"AI分析出现意外错误: {str(e)}")
+        logger.error(
+            "Unexpected error in food image analysis, using fallback", error=str(e)
+        )
+        # 返回模拟数据作为后备
+        return get_fallback_data(f"分析过程出错: {str(e)[:50]}")
 
 
 def _create_mock_item_result() -> Dict[str, Any]:

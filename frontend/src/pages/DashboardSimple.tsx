@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Activity, Target, Flame, Droplets, TrendingDown, Calendar, ChevronRight, Heart, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Activity, Target, Flame, Droplets, TrendingDown, Calendar, ChevronRight, Heart, TrendingUp, MessageCircle, Brain, HeartHandshake } from 'lucide-react';
 import api from '@/api/client';
 
 interface DashboardData {
@@ -15,6 +16,24 @@ interface DashboardData {
 export default function DashboardSimple() {
   const [data, setData] = useState<DashboardData>({});
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'weight':
+        navigate('/health');
+        break;
+      case 'habit':
+        navigate('/habits');
+        break;
+      case 'diet':
+        navigate('/diet-tracking');
+        break;
+      case 'emotion':
+        navigate('/emotional');
+        break;
+    }
+  };
 
   useEffect(() => {
     loadDashboardData();
@@ -138,23 +157,68 @@ export default function DashboardSimple() {
         <div className="bg-white rounded-xl shadow p-6 mb-8">
           <h2 className="text-xl font-bold text-gray-800 mb-4">快捷操作</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button className="flex flex-col items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors">
+            <button 
+              onClick={() => handleQuickAction('weight')}
+              className="flex flex-col items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors"
+            >
               <Activity className="w-6 h-6 mb-2" />
               <span className="text-sm font-medium">记录体重</span>
             </button>
-            <button className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl transition-colors">
+            <button 
+              onClick={() => handleQuickAction('habit')}
+              className="flex flex-col items-center justify-center p-4 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl transition-colors"
+            >
               <Calendar className="w-6 h-6 mb-2" />
               <span className="text-sm font-medium">完成习惯</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-4 bg-cyan-50 hover:bg-cyan-100 text-cyan-600 rounded-xl transition-colors">
+             </button>
+              <button 
+                onClick={() => handleQuickAction('diet')}
+                className="flex flex-col items-center justify-center p-4 bg-cyan-50 hover:bg-cyan-100 text-cyan-600 rounded-xl transition-colors"
+            >
               <Droplets className="w-6 h-6 mb-2" />
               <span className="text-sm font-medium">记录饮食</span>
             </button>
-            <button className="flex flex-col items-center justify-center p-4 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl transition-colors">
+            <button 
+              onClick={() => handleQuickAction('emotion')}
+              className="flex flex-col items-center justify-center p-4 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl transition-colors"
+            >
               <Flame className="w-6 h-6 mb-2" />
               <span className="text-sm font-medium">情感签到</span>
             </button>
           </div>
+        </div>
+
+        {/* AI 咨询入口 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <button 
+            onClick={() => navigate('/chat')}
+            className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl shadow p-6 text-white hover:from-purple-600 hover:to-indigo-700 transition-all"
+          >
+            <div className="flex items-center">
+              <div className="bg-white/20 p-3 rounded-full mr-4">
+                <Brain className="h-8 w-8" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold mb-1">AI 健康顾问</h3>
+                <p className="text-sm opacity-90">智能分析您的健康数据，提供个性化建议</p>
+              </div>
+            </div>
+          </button>
+          
+          <button 
+            onClick={() => navigate('/emotional')}
+            className="bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl shadow p-6 text-white hover:from-pink-600 hover:to-rose-600 transition-all"
+          >
+            <div className="flex items-center">
+              <div className="bg-white/20 p-3 rounded-full mr-4">
+                <HeartHandshake className="h-8 w-8" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold mb-1">情感支持</h3>
+                <p className="text-sm opacity-90">AI 倾听您的情绪，提供心理支持和建议</p>
+              </div>
+            </div>
+          </button>
         </div>
 
         {/* 导航到游戏化页面 */}

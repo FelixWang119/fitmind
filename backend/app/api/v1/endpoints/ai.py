@@ -103,6 +103,8 @@ async def ai_chat(
             else:
                 notification = f"已切换到{get_role_display_name(new_role)}模式"
 
+        # 初始化 conversation 变量
+        conversation = None
         if ai_request.conversation_id:
             # 验证对话属于当前用户
             conversation = (
@@ -163,6 +165,25 @@ async def ai_chat(
         response_dict["is_fusion"] = is_fusion
         response_dict["notification"] = notification
 
+        # 如果没有 conversation_id，创建新对话
+        conv_id = ai_request.conversation_id
+        logger.info("Conversation ID check", conv_id=conv_id, type=type(conv_id))
+        if conv_id is None:
+            # 创建新对话
+            new_conversation = Conversation(
+                user_id=current_user.id,
+                title=ai_request.message[:50] if ai_request.message else "新对话",
+                current_role=context.get("current_role", "general"),
+            )
+            db.add(new_conversation)
+            db.commit()
+            db.refresh(new_conversation)
+            conv_id = int(new_conversation.id)
+            conversation = new_conversation
+            logger.info("Created new conversation", conv_id=conv_id)
+
+        response_dict["conversation_id"] = conv_id
+
         logger.info(
             "AI response generated",
             response_length=len(response.response),
@@ -171,6 +192,44 @@ async def ai_chat(
             current_role=context.get("current_role", "general"),
             role_switched=response_dict["role_switched"],
         )
+
+        # 保存用户消息和AI回复到数据库
+        # Use the conversation_id that was either passed or created
+        save_conv_id = ai_request.conversation_id
+        if save_conv_id is None:
+            save_conv_id = conv_id  # Use the newly created conversation ID
+
+        if save_conv_id is not None:
+            # 确保 conversation_id 是整数
+            save_conv_id = int(save_conv_id)
+
+            # 保存用户消息 - Message and MessageRole are imported at top of file
+            user_message = Message(
+                conversation_id=save_conv_id,
+                role=MessageRole.USER,
+                content=ai_request.message,
+                ai_model=response.model,
+                tokens_used=response.tokens_used,
+                response_time=response.response_time,
+            )
+            db.add(user_message)
+
+            # 保存AI回复
+            ai_message = Message(
+                conversation_id=save_conv_id,
+                role=MessageRole.ASSISTANT,
+                content=response.response,
+                ai_model=response.model,
+                tokens_used=response.tokens_used,
+                response_time=response.response_time,
+            )
+            db.add(ai_message)
+
+            # 更新对话时间
+            if conversation:
+                conversation.updated_at = datetime.utcnow()
+
+            db.commit()
 
         return AIResponse(**response_dict)
 

@@ -28,19 +28,60 @@ async def update_user_profile(
     db: Session = Depends(get_db),
 ):
     """更新当前用户的个人资料"""
-    for field, value in user_update.model_dump(exclude_unset=True).items():
-        setattr(current_user, field, value)
+    try:
+        # 特殊情況驗證
+        if user_update.age is not None and user_update.age <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Age must be positive"
+            )
 
-    db.commit()
-    db.refresh(current_user)
+        if user_update.height is not None and user_update.height <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Height must be positive",
+            )
 
-    logger.info(
-        "User profile updated",
-        user_id=current_user.id,
-        fields_updated=list(user_update.model_dump(exclude_unset=True).keys()),
-    )
+        if user_update.initial_weight is not None and user_update.initial_weight <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Initial weight must be positive",
+            )
 
-    return current_user
+        if user_update.target_weight is not None and user_update.target_weight <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Target weight must be positive",
+            )
+
+        # 更新允许更改的字段
+        update_data = user_update.model_dump(exclude_unset=True)
+
+        for field, value in update_data.items():
+            if hasattr(current_user, field):
+                setattr(current_user, field, value)
+
+        db.commit()
+        db.refresh(current_user)
+
+        logger.info(
+            "User profile updated",
+            user_id=current_user.id,
+            fields_updated=list(user_update.model_dump(exclude_unset=True).keys()),
+        )
+
+        return current_user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to update user profile", user_id=current_user.id, error=str(e)
+        )
+
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user profile",
+        )
 
 
 @router.get("/{user_id}", response_model=User)

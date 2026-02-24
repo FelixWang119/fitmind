@@ -1,7 +1,5 @@
 // Jest setup file
 import '@testing-library/jest-dom';
-import { cleanup } from '@testing-library/react';
-import { afterEach } from '@jest/globals';
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -41,7 +39,6 @@ window.scrollTo = jest.fn();
 
 // Clean up after each test
 afterEach(() => {
-  cleanup();
   jest.clearAllMocks();
 });
 
@@ -73,21 +70,3 @@ Object.defineProperty(window, 'sessionStorage', {
 
 // Mock fetch
 global.fetch = jest.fn();
-
-// Mock console methods in tests
-const originalConsole = { ...console };
-const mockedConsole = {
-  log: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-  info: jest.fn(),
-  debug: jest.fn(),
-};
-
-beforeAll(() => {
-  Object.assign(console, mockedConsole);
-});
-
-afterAll(() => {
-  Object.assign(console, originalConsole);
-});

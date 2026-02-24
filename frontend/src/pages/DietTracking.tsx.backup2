@@ -1,0 +1,999 @@
+import React, { useState, useEffect } from 'react';
+import { Calendar, Camera, Plus, Check, Edit2, Trash2, X, ChevronRight, ChevronDown, ChevronUp, Scale, AlertCircle } from 'lucide-react';
+import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
+
+interface FoodItem {
+  id?: number;
+  name: string;
+  grams: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+interface MealAnalysis {
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  items: FoodItem[];
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
+  notes: string;
+}
+
+interface MealRecord {
+  id: number;
+  name: string;
+  meal_type: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  meal_datetime: string;
+  items?: FoodItem[];
+}
+
+const DietTracking: React.FC = () => {
+  const { user } = useAuthStore();
+  
+  // 获取时区偏移量
+  const getTimezoneOffset = () => {
+    const offset = new Date().getTimezoneOffset();
+    const hours = Math.abs(Math.floor(offset / 60));
+    const minutes = Math.abs(offset % 60);
+    const sign = offset <= 0 ? '+' : '-';
+    return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  };
+  
+  // 状态管理
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+  const [meals, setMeals] = useState<MealRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // 拍照识别相关状态
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
+  const [analyzingPhoto, setAnalyzingPhoto] = useState<boolean>(false);
+  const [photoAnalysis, setPhotoAnalysis] = useState<MealAnalysis | null>(null);
+  
+  // 餐次选择状态
+  const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('lunch');
+  
+  // 餐食详情展开状态
+  const [expandedMealId, setExpandedMealId] = useState<number | null>(null);
+  
+  // 获取餐食摘要
+  const getMealSummary = (meal: MealRecord): string => {
+    if (!meal.items || meal.items.length === 0) {
+      return '暂无食材详情';
+    }
+    
+    const itemNames = meal.items.map(item => item.name);
+    if (itemNames.length <= 3) {
+      return `包含：${itemNames.join('、')}`;
+    } else {
+      return `包含：${itemNames.slice(0, 3).join('、')}等${itemNames.length}种食材`;
+    }
+  };
+  
+  // 获取餐食总热量
+  const getMealTotalCalories = (meal: MealRecord): number => {
+    if (meal.calories && meal.calories > 0) {
+      return Math.round(meal.calories);
+    }
+    
+    // 如果meal.calories为0或未定义，计算items的热量
+    if (meal.items && meal.items.length > 0) {
+      return Math.round(meal.items.reduce((total, item) => 
+        total + (item.calories_per_serving || 0) * (item.quantity || 1), 0
+      ));
+    }
+    
+    return 0;
+  };
+  
+  // 按餐次类型分组餐食
+  const groupMealsByType = (meals: MealRecord[]) => {
+    const groups: Record<string, MealRecord[]> = {
+      breakfast: [],
+      lunch: [],
+      dinner: [],
+      snack: []
+    };
+    
+    meals.forEach(meal => {
+      if (groups[meal.meal_type]) {
+        groups[meal.meal_type].push(meal);
+      } else {
+        groups.snack.push(meal); // 未知类型归为加餐
+      }
+    });
+    
+    return groups;
+  };
+  
+  // 获取餐次类型中文名
+  const getMealTypeName = (type: string): string => {
+    switch (type) {
+      case 'breakfast': return '早餐';
+      case 'lunch': return '午餐';
+      case 'dinner': return '晚餐';
+      case 'snack': return '加餐';
+      default: return '其他';
+    }
+  };
+  const [showMealTypeSelection, setShowMealTypeSelection] = useState<boolean>(false);
+  
+  // 编辑状态
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [editedItem, setEditedItem] = useState<FoodItem | null>(null);
+  
+  // 计算当日总计
+  const totalCalories = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
+  const totalProtein = meals.reduce((sum, meal) => sum + (meal.protein || 0), 0);
+  const totalCarbs = meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0);
+  const totalFat = meals.reduce((sum, meal) => sum + (meal.fat || 0), 0);
+  
+  // 假设用户每日热量目标为2000kcal（实际应从用户设置获取）
+  const dailyCalorieTarget = 2000;
+  const remainingCalories = Math.max(0, dailyCalorieTarget - totalCalories);
+  const calorieProgress = Math.min(100, (totalCalories / dailyCalorieTarget) * 100);
+
+  // 获取当日餐食记录
+  const fetchDailyMeals = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.getDailyMeals(selectedDate);
+      setMeals(response.meals || []);
+    } catch (error: any) {
+      console.error('Failed to fetch meals:', error);
+      setError(error.message || '获取餐食记录失败');
+      setMeals([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDailyMeals();
+  }, [selectedDate]);
+
+  // 处理照片上传
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedPhoto(reader.result as string);
+        setShowPhotoModal(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 分析照片
+  const handleAnalyzePhoto = async () => {
+    if (!selectedPhoto) return;
+    
+    try {
+      setAnalyzingPhoto(true);
+      // 提取base64数据
+      const base64Data = selectedPhoto.replace(/^data:image\/(png|jpg|jpeg);base64,/, '');
+      
+      // 发送到后端进行AI分析
+      const analysis = await api.analyzeFoodImage(base64Data, selectedDate);
+      
+      if (analysis) {
+        // 确保items数组存在
+        const items = analysis.items || [];
+        setPhotoAnalysis({
+          meal_type: analysis.meal_type || selectedMealType,
+          items: items,
+          total_calories: analysis.total_calories || 0,
+          total_protein: analysis.total_protein || 0,
+          total_carbs: analysis.total_carbs || 0,
+          total_fat: analysis.total_fat || 0,
+          notes: analysis.notes || 'AI分析完成'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to analyze photo:', error);
+      setError('照片分析失败，请重试');
+    } finally {
+      setAnalyzingPhoto(false);
+    }
+  };
+
+  // 清除照片（但保留分析结果）
+  const handleClearPhoto = () => {
+    setSelectedPhoto(null);
+    setShowPhotoModal(false);
+    setShowMealTypeSelection(false);
+    
+    // 如果有分析结果，显示提示
+    if (photoAnalysis) {
+      // 可以在这里添加一个toast提示，但为了简单起见，我们先不添加
+      console.log('照片已关闭，分析结果已保存到页面');
+    }
+  };
+
+  // 清除所有（包括分析结果）
+  const handleClearAll = () => {
+    setSelectedPhoto(null);
+    setPhotoAnalysis(null);
+    setShowPhotoModal(false);
+    setShowMealTypeSelection(false);
+  };
+
+  // 开始编辑食材
+  const handleEditItem = (index: number) => {
+    if (photoAnalysis) {
+      setEditingItemIndex(index);
+      setEditedItem({ ...photoAnalysis.items[index] });
+    }
+  };
+
+  // 保存编辑
+  const handleSaveEdit = () => {
+    if (photoAnalysis && editedItem && editingItemIndex !== null) {
+      const updatedItems = [...photoAnalysis.items];
+      updatedItems[editingItemIndex] = editedItem;
+      
+      // 重新计算总计
+      const total_calories = updatedItems.reduce((sum, item) => sum + item.calories, 0);
+      const total_protein = updatedItems.reduce((sum, item) => sum + item.protein, 0);
+      const total_carbs = updatedItems.reduce((sum, item) => sum + item.carbs, 0);
+      const total_fat = updatedItems.reduce((sum, item) => sum + item.fat, 0);
+      
+      setPhotoAnalysis({
+        ...photoAnalysis,
+        items: updatedItems,
+        total_calories,
+        total_protein,
+        total_carbs,
+        total_fat
+      });
+      
+      setEditingItemIndex(null);
+      setEditedItem(null);
+    }
+  };
+
+  // 删除食材
+  const handleDeleteItem = (index: number) => {
+    if (photoAnalysis) {
+      const updatedItems = photoAnalysis.items.filter((_, i) => i !== index);
+      
+      if (updatedItems.length === 0) {
+        // 如果没有食材了，清除分析结果
+        handleClearAll();
+        return;
+      }
+      
+      // 重新计算总计
+      const total_calories = updatedItems.reduce((sum, item) => sum + item.calories, 0);
+      const total_protein = updatedItems.reduce((sum, item) => sum + item.protein, 0);
+      const total_carbs = updatedItems.reduce((sum, item) => sum + item.carbs, 0);
+      const total_fat = updatedItems.reduce((sum, item) => sum + item.fat, 0);
+      
+      setPhotoAnalysis({
+        ...photoAnalysis,
+        items: updatedItems,
+        total_calories,
+        total_protein,
+        total_carbs,
+        total_fat
+      });
+    }
+  };
+
+  // 添加新食材
+  const handleAddItem = () => {
+    if (photoAnalysis) {
+      const newItem: FoodItem = {
+        name: '新食材',
+        grams: 100,
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0
+      };
+      
+      setPhotoAnalysis({
+        ...photoAnalysis,
+        items: [...photoAnalysis.items, newItem]
+      });
+      
+      // 开始编辑新添加的食材
+      setEditingItemIndex(photoAnalysis.items.length);
+      setEditedItem(newItem);
+    }
+  };
+
+  // 确认登记餐食
+  const handleConfirmMeal = async () => {
+    if (!photoAnalysis) return;
+    
+    try {
+      // 创建餐食记录
+      const mealData = {
+        name: `${selectedMealType}餐食`,
+        meal_type: photoAnalysis.meal_type,
+        calories: photoAnalysis.total_calories,
+        protein: photoAnalysis.total_protein,
+        carbs: photoAnalysis.total_carbs,
+        fat: photoAnalysis.total_fat,
+        notes: photoAnalysis.notes,
+        meal_datetime: `${selectedDate}T12:00:00${getTimezoneOffset()}`, // 默认中午时间，带时区
+        items: photoAnalysis.items.map(item => ({
+          name: item.name,
+          serving_size: item.grams,
+          serving_unit: 'g',
+          quantity: 1,
+          calories_per_serving: item.calories,
+          protein_per_serving: item.protein,
+          carbs_per_serving: item.carbs,
+          fat_per_serving: item.fat
+        }))
+      };
+      
+      // 检查是否已存在同类型同时间的餐食
+      // 使用更宽松的匹配：同一天、同餐次类型
+      const mealDate = new Date(`${selectedDate}T12:00:00`);
+      const existingMeal = meals.find(meal => {
+        const mealTime = new Date(meal.meal_datetime);
+        const isSameDay = mealTime.toDateString() === mealDate.toDateString();
+        const isSameMealType = meal.meal_type === photoAnalysis.meal_type;
+        return isSameDay && isSameMealType;
+      });
+      
+      if (existingMeal) {
+        // 更新现有餐食
+        await api.updateMeal(existingMeal.id, mealData);
+        alert('餐食记录已更新！');
+      } else {
+        // 创建新餐食
+        await api.createMeal(mealData);
+        alert('餐食记录已保存！');
+      }
+      
+      // 刷新数据
+      await fetchDailyMeals();
+      
+      // 清除状态
+      handleClearAll();
+      
+    } catch (error) {
+      console.error('Failed to save meal:', error);
+      setError('保存餐食记录失败，请重试');
+    }
+  };
+
+  // 删除餐食记录
+  const handleDeleteMeal = async (mealId: number) => {
+    if (confirm('确定要删除这条餐食记录吗？')) {
+      try {
+        await api.deleteMeal(mealId);
+        await fetchDailyMeals();
+      } catch (error) {
+        console.error('Failed to delete meal:', error);
+        setError('删除餐食记录失败');
+      }
+    }
+  };
+
+  // 餐次类型选项
+  const mealTypeOptions = [
+    { value: 'breakfast', label: '早餐', color: 'bg-blue-100 text-blue-800' },
+    { value: 'lunch', label: '午餐', color: 'bg-purple-100 text-purple-800' },
+    { value: 'dinner', label: '晚餐', color: 'bg-green-100 text-green-800' },
+    { value: 'snack', label: '加餐', color: 'bg-yellow-100 text-yellow-800' }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4 md:p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* 头部 */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">饮食追踪</h1>
+          <p className="text-gray-600">记录你的每一餐，科学管理营养摄入</p>
+        </div>
+
+        {/* 日期选择 */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Calendar className="w-5 h-5 text-gray-500" />
+              <span className="font-medium text-gray-700">选择日期</span>
+            </div>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* 热量进度 */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">今日热量进度</h2>
+            <span className="text-sm font-medium text-gray-600">
+              目标: {dailyCalorieTarget} kcal
+            </span>
+          </div>
+          
+          <div className="space-y-4">
+            {/* 进度条 */}
+            <div className="relative h-4 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-400 to-blue-500 transition-all duration-500"
+                style={{ width: `${calorieProgress}%` }}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">{totalCalories}</div>
+                <div className="text-sm text-gray-600">已摄入(kcal)</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{remainingCalories}</div>
+                <div className="text-sm text-gray-600">剩余(kcal)</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{totalProtein}</div>
+                <div className="text-sm text-gray-600">蛋白质(g)</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{totalCarbs}</div>
+                <div className="text-sm text-gray-600">碳水(g)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 主要操作区域 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 左侧：记录新餐食 */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">记录新餐食</h2>
+                <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl">
+                  <Camera className="w-5 h-5" />
+                  <span>拍照识别</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    capture="environment"
+                  />
+                </label>
+              </div>
+
+              {/* 餐次选择 */}
+              {!photoAnalysis && (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-600 mb-3">选择餐次类型：</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {mealTypeOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setSelectedMealType(option.value as any)}
+                        className={`px-4 py-3 rounded-xl border transition-all ${selectedMealType === option.value ? `${option.color} border-transparent font-semibold` : 'bg-white border-gray-300 hover:border-gray-400'}`}
+                      >
+                        {option.label}
+                      </button>
+                   ))}
+                </div>
+              )}
+
+              {/* 照片分析结果 */}
+              {photoAnalysis && (
+                <div className="space-y-6">
+                  {/* 分析结果头部 */}
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <Check className="w-6 h-6 text-green-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">识别成功</h3>
+                          <p className="text-sm text-green-600">已识别出 {photoAnalysis.items.length} 种食材</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleClearAll}
+                        className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                      >
+                        <X className="w-5 h-5 text-green-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 餐次类型显示 */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">餐次类型</p>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                          {mealTypeOptions.find(opt => opt.value === photoAnalysis.meal_type)?.label || '午餐'}
+                        </span>
+                        <button
+                          onClick={() => setShowMealTypeSelection(!showMealTypeSelection)}
+                          className="p-1 hover:bg-gray-100 rounded-lg"
+                        >
+                          <Edit2 className="w-4 h-4 text-gray-500" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* 营养总计 */}
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600 mb-1">营养总计</p>
+                      <div className="text-lg font-bold text-red-600">
+                        {Math.round(photoAnalysis.total_calories)} <span className="text-base">kcal</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        P: {Math.round(photoAnalysis.total_protein)}g / 
+                        C: {Math.round(photoAnalysis.total_carbs)}g / 
+                        F: {Math.round(photoAnalysis.total_fat)}g
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 餐次类型选择（编辑时显示） */}
+                  {showMealTypeSelection && (
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <p className="text-sm text-gray-600 mb-3">选择餐次类型：</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {mealTypeOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => {
+                              setPhotoAnalysis({
+                                ...photoAnalysis,
+                                meal_type: option.value as any
+                              });
+                              setShowMealTypeSelection(false);
+                            }}
+                            className={`px-3 py-2 rounded-lg border transition-all ${photoAnalysis.meal_type === option.value ? `${option.color} border-transparent font-semibold` : 'bg-white border-gray-300 hover:border-gray-400'}`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 食材分解列表 */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium text-gray-900">食材分解</h4>
+                      <button
+                        onClick={handleAddItem}
+                        className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100"
+                      >
+                        <Plus className="w-4 h-4" />
+                        添加食材
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {photoAnalysis.items.map((item, index) => (
+                        <div key={index} className="bg-gray-50 rounded-xl p-4">
+                          {editingItemIndex === index ? (
+                            // 编辑模式
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <input
+                                  type="text"
+                                  value={editedItem?.name || ''}
+                                  onChange={(e) => setEditedItem(prev => prev ? { ...prev, name: e.target.value } : null)}
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="食材名称"
+                                />
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-sm text-gray-600 mb-1">克数(g)</label>
+                                  <input
+                                    type="number"
+                                    value={editedItem?.grams || 0}
+                                    onChange={(e) => setEditedItem(prev => prev ? { ...prev, grams: parseFloat(e.target.value) || 0 } : null)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm text-gray-600 mb-1">热量(kcal)</label>
+                                  <input
+                                    type="number"
+                                    value={editedItem?.calories || 0}
+                                    onChange={(e) => setEditedItem(prev => prev ? { ...prev, calories: parseFloat(e.target.value) || 0 } : null)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-sm text-gray-600 mb-1">蛋白质(g)</label>
+                                  <input
+                                    type="number"
+                                    value={editedItem?.protein || 0}
+                                    onChange={(e) => setEditedItem(prev => prev ? { ...prev, protein: parseFloat(e.target.value) || 0 } : null)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm text-gray-600 mb-1">碳水(g)</label>
+                                  <input
+                                    type="number"
+                                    value={editedItem?.carbs || 0}
+                                    onChange={(e) => setEditedItem(prev => prev ? { ...prev, carbs: parseFloat(e.target.value) || 0 } : null)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm text-gray-600 mb-1">脂肪(g)</label>
+                                  <input
+                                    type="number"
+                                    value={editedItem?.fat || 0}
+                                    onChange={(e) => setEditedItem(prev => prev ? { ...prev, fat: parseFloat(e.target.value) || 0 } : null)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingItemIndex(null);
+                                    setEditedItem(null);
+                                  }}
+                                  className="px-3 py-1 text-gray-600 hover:bg-gray-100 rounded-lg"
+                                >
+                                  取消
+                                </button>
+                                <button
+                                  onClick={handleSaveEdit}
+                                  className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                                >
+                                  保存
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            // 显示模式
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Scale className="w-4 h-4 text-gray-400" />
+                                  <h5 className="font-medium text-gray-900">{item.name}</h5>
+                                  <span className="text-sm text-gray-500">({item.grams}g)</span>
+                                </div>
+                                <div className="grid grid-cols-4 gap-4">
+                                  <div>
+                                    <div className="text-sm text-gray-600">热量</div>
+                                    <div className="font-medium text-red-600">{Math.round(item.calories)} kcal</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm text-gray-600">蛋白质</div>
+                                    <div className="font-medium text-blue-600">{Math.round(item.protein)}g</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm text-gray-600">碳水</div>
+                                    <div className="font-medium text-purple-600">{Math.round(item.carbs)}g</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm text-gray-600">脂肪</div>
+                                    <div className="font-medium text-yellow-600">{Math.round(item.fat)}g</div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-1 ml-4">
+                                <button
+                                  onClick={() => handleEditItem(index)}
+                                  className="p-1 hover:bg-gray-200 rounded-lg"
+                                >
+                                  <Edit2 className="w-4 h-4 text-gray-500" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteItem(index)}
+                                  className="p-1 hover:bg-red-50 rounded-lg"
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-500" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 营养建议 */}
+                  {photoAnalysis.notes && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-1">营养建议</h4>
+                          <p className="text-sm text-gray-700">{photoAnalysis.notes}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 确认按钮 */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handleConfirmMeal}
+                      className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      确认登记此餐
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 提示信息 */}
+              {!photoAnalysis && (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Camera className="w-8 h-8 text-purple-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">拍照识别食材</h3>
+                  <p className="text-gray-600 mb-6">
+                    点击上方按钮拍照或选择照片，AI将自动识别食材并计算营养成分
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left max-w-2xl mx-auto">
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                        <span className="text-blue-600 font-bold">1</span>
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">选择餐次</h4>
+                      <p className="text-sm text-gray-600">选择早餐、午餐、晚餐或加餐</p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                        <span className="text-blue-600 font-bold">2</span>
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">拍照识别</h4>
+                      <p className="text-sm text-gray-600">拍摄食物照片，AI自动分析</p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                        <span className="text-blue-600 font-bold">3</span>
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">确认登记</h4>
+                      <p className="text-sm text-gray-600">核对信息，一键完成记录</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+           {/* 右侧：今日餐食记录 */}
+          <div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">今日餐食记录</h2>
+                {meals.length > 0 && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">{meals.length}</span> 餐 · 
+                    <span className="font-medium text-red-600 ml-1">
+                      {Math.round(meals.reduce((total, meal) => total + getMealTotalCalories(meal), 0))}
+                    </span> 大卡
+                  </div>
+                )}
+              </div>
+              
+              {loading && !meals.length ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-gray-600">正在加载...</p>
+                </div>
+              ) : error && !meals.length ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-6 h-6 text-red-500" />
+                  </div>
+                  <p className="text-gray-600">{error}</p>
+                </div>
+              ) : meals.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-gray-400 text-2xl">🍽️</span>
+                  </div>
+                  <p className="text-gray-600">今日还没有记录餐食</p>
+                  <p className="text-sm text-gray-500 mt-1">点击左侧开始记录第一餐</p>
+                </div>
+               ) : (
+                <div className="space-y-4">
+                   {meals.map((meal) => (
+                    <div key={meal.id} className="bg-white rounded-xl p-4 border border-gray-200 hover:border-gray-300 transition-colors">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${mealTypeOptions.find(opt => opt.value === meal.meal_type)?.color || 'bg-gray-100 text-gray-800'}`}>
+                              {meal.meal_type === 'breakfast' ? '早餐' : 
+                               meal.meal_type === 'lunch' ? '午餐' : 
+                               meal.meal_type === 'dinner' ? '晚餐' : '加餐'}
+                            </span>
+                            <span className="font-medium text-gray-900">{meal.name}</span>
+                            <span className="text-sm text-gray-500">
+                              {new Date(meal.meal_datetime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          
+                          {/* 餐食内容摘要 */}
+                          <div className="mt-2">
+                            <div className="text-sm text-gray-700 line-clamp-1">
+                              {getMealSummary(meal)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {/* 热量显示 */}
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-red-600">{getMealTotalCalories(meal)}</div>
+                            <div className="text-xs text-gray-600">大卡</div>
+                          </div>
+                          
+                          <button
+                            onClick={() => setExpandedMealId(expandedMealId === meal.id ? null : meal.id)}
+                            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                            title={expandedMealId === meal.id ? "收起详情" : "查看详情"}
+                          >
+                            {expandedMealId === meal.id ? (
+                              <ChevronUp className="w-4 h-4 text-gray-600" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-gray-600" />
+                            )}
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDeleteMeal(meal.id)}
+                            className="p-1 hover:bg-red-50 rounded-lg transition-colors"
+                            title="删除餐食"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* 营养概要 */}
+                      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100">
+                        <div className="text-center">
+                          <div className="font-medium text-blue-600">{Math.round(meal.protein)}g</div>
+                          <div className="text-xs text-gray-600">蛋白质</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-medium text-purple-600">{Math.round(meal.carbs)}g</div>
+                          <div className="text-xs text-gray-600">碳水</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-medium text-yellow-600">{Math.round(meal.fat)}g</div>
+                          <div className="text-xs text-gray-600">脂肪</div>
+                        </div>
+                      </div>
+                      
+                      {/* 展开的详情 */}
+                      {expandedMealId === meal.id && meal.items && meal.items.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <div className="mb-2">
+                            <h4 className="text-sm font-medium text-gray-900 mb-2">食材详情</h4>
+                            <div className="space-y-2">
+                              {meal.items.map((item, index) => (
+                                <div key={index} className="flex justify-between items-center text-sm">
+                                  <div className="flex-1">
+                                    <span className="text-gray-800">{item.name}</span>
+                                    <span className="text-gray-500 text-xs ml-2">
+                                      {item.serving_size}{item.serving_unit} × {item.quantity}
+                                    </span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-gray-700 font-medium">{Math.round(item.calories_per_serving * (item.quantity || 1))} kcal</span>
+                                    <div className="text-xs text-gray-500 flex gap-2 mt-0.5">
+                                      <span>蛋: {Math.round(item.protein_per_serving || 0)}g</span>
+                                      <span>碳: {Math.round(item.carbs_per_serving || 0)}g</span>
+                                      <span>脂: {Math.round(item.fat_per_serving || 0)}g</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {meal.notes && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <h4 className="text-sm font-medium text-gray-900 mb-1">备注</h4>
+                              <p className="text-sm text-gray-600">{meal.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 照片模态框 */}
+        {showPhotoModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">食物照片</h3>
+                  <button
+                    onClick={handleClearPhoto}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                <div className="mb-6">
+                  {selectedPhoto && (
+                    <img
+                      src={selectedPhoto}
+                      alt="Selected food"
+                      className="w-full h-64 object-cover rounded-xl"
+                    />
+                  )}
+                </div>
+                
+                 <div className="flex gap-3">
+                   <button
+                     onClick={handleClearAll}
+                     className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50"
+                   >
+                     重选照片
+                   </button>
+                  <button
+                    onClick={handleAnalyzePhoto}
+                    disabled={analyzingPhoto}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50"
+                  >
+                    {analyzingPhoto ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        分析中...
+                      </span>
+                    ) : (
+                      '开始分析'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default DietTracking;
