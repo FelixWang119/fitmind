@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     meals,
     meal_checkin,
     memory,
+    # notifications,  # 临时注释，待修复认证依赖
     nutrition,
     personalized_advice,
     professional_fusion,
@@ -87,6 +88,11 @@ api_router.include_router(
     prefix="/reward-personalization",
     tags=["reward-personalization"],
 )
+
+# 通知系统端点
+# api_router.include_router(
+#     notifications.router, prefix="/notifications", tags=["notifications"]
+# )
 
 # 健康评估与报告端点
 api_router.include_router(
