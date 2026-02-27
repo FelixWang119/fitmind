@@ -67,22 +67,25 @@ async def get_daily_nutrition_summary(
     if not target_date:
         target_date = datetime.today().date()
 
-    start_date = datetime.combine(target_date, datetime.min.time()).replace(
-        tzinfo=timezone.utc
-    )
-    end_date = datetime.combine(
+    # 使用时区无关的日期范围查询
+    # 将 date 转换为当天的开始和结束时间（本地时间）
+    start_datetime = datetime.combine(target_date, datetime.min.time())
+    end_datetime = datetime.combine(
         target_date + timedelta(days=1), datetime.min.time()
-    ).replace(tzinfo=timezone.utc)
+    )
 
     # 获取用户当日的餐食记录（包含食材详情）
+    # 使用 date() 函数提取日期部分进行比较，避免时区问题
+    from sqlalchemy import func
+
     meals = (
         db.query(Meal)
         .options(joinedload(Meal.meal_items))
         .filter(
             Meal.user_id == current_user.id,
-            Meal.meal_datetime >= start_date,
-            Meal.meal_datetime < end_date,
+            func.date(Meal.meal_datetime) == target_date,
         )
+        .order_by(Meal.meal_datetime.asc())  # 按时间排序
         .all()
     )
 
@@ -267,6 +270,56 @@ async def create_meal(
 
     logger.info("Meal created", meal_id=meal.id, user_id=current_user.id)
 
+    # 添加到短期记忆队列
+    try:
+        from app.services.short_term_memory import get_short_term_memory_service
+
+        meal_type_map = {
+            "breakfast": "早餐",
+            "lunch": "午餐",
+            "dinner": "晚餐",
+            "snack": "加餐",
+        }
+        meal_type_cn = meal_type_map.get(meal.meal_type, meal.meal_type)
+
+        # 构建食材内容描述
+        if meal_with_items.meal_items:
+            items_text = ", ".join(
+                [
+                    f"{item.name} {int(item.serving_size)}{item.serving_unit}"
+                    for item in meal_with_items.meal_items[:5]
+                ]
+            )
+            if len(meal_with_items.meal_items) > 5:
+                items_text += f" 等{len(meal_with_items.meal_items)}种食材"
+            content = f"记录了{meal_type_cn}（{meal.name}）：{items_text}，总热量{meal.calories or 0}千卡"
+        else:
+            content = (
+                f"记录了{meal_type_cn}（{meal.name}），摄入热量{meal.calories or 0}千卡"
+            )
+
+        # 添加到短期记忆队列（溢出索引由队列内部自动处理）
+        # 注意：需要将 Decimal 转换为 float 以支持 JSON 序列化
+        get_short_term_memory_service().add_memory(
+            user_id=int(current_user.id),
+            event_type="meal",
+            event_source=meal.meal_type,
+            content=content,
+            metrics={
+                "calories": float(meal.calories) if meal.calories else 0.0,
+                "protein": float(meal.protein) if meal.protein else 0.0,
+                "carbs": float(meal.carbs) if meal.carbs else 0.0,
+                "fat": float(meal.fat) if meal.fat else 0.0,
+            },
+            context={"meal_type": meal.meal_type},
+            source_table="meals",
+            source_id=meal.id,
+        )
+
+        logger.info(f"餐食已添加到短期记忆队列：{meal.id}")
+    except Exception as e:
+        logger.error(f"添加餐食到短期记忆失败：{e}")
+
     return meal_with_items
 
 
@@ -335,6 +388,55 @@ async def update_meal(
     db.refresh(meal, attribute_names=["meal_items"])
 
     logger.info("Meal updated", meal_id=meal.id, user_id=current_user.id)
+
+    # ========== 添加到短期记忆队列（更新也写入） ==========
+    try:
+        from app.services.short_term_memory import get_short_term_memory_service
+
+        meal_type_map = {
+            "breakfast": "早餐",
+            "lunch": "午餐",
+            "dinner": "晚餐",
+            "snack": "加餐",
+        }
+        meal_type_cn = meal_type_map.get(meal.meal_type, meal.meal_type)
+
+        # 构建食材内容描述
+        if meal.meal_items:
+            items_text = ", ".join(
+                [
+                    f"{item.name} {int(item.serving_size)}{item.serving_unit}"
+                    for item in meal.meal_items[:5]
+                ]
+            )
+            if len(meal.meal_items) > 5:
+                items_text += f" 等{len(meal.meal_items)}种食材"
+            content = f"更新了{meal_type_cn}（{meal.name}）：{items_text}，总热量{meal.calories or 0}千卡"
+        else:
+            content = (
+                f"更新了{meal_type_cn}（{meal.name}），摄入热量{meal.calories or 0}千卡"
+            )
+
+        get_short_term_memory_service().add_memory(
+            user_id=int(current_user.id),
+            event_type="meal",
+            event_source=meal.meal_type,
+            content=content,
+            metrics={
+                "calories": float(meal.calories) if meal.calories else 0.0,
+                "protein": float(meal.protein) if meal.protein else 0.0,
+                "carbs": float(meal.carbs) if meal.carbs else 0.0,
+                "fat": float(meal.fat) if meal.fat else 0.0,
+            },
+            context={"meal_type": meal.meal_type, "updated": True},
+            source_table="meals",
+            source_id=meal.id,
+        )
+
+        logger.info(f"餐食更新已添加到短期记忆队列：{meal.id}")
+    except Exception as e:
+        logger.error(f"添加餐食更新到短期记忆失败：{e}")
+    # ====================================================
 
     return meal
 

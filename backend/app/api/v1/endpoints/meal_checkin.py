@@ -14,6 +14,7 @@ from app.models.nutrition import Meal, MealItem
 from app.models.user import User as UserModel
 from app.services.calorie_service import get_calorie_service
 from app.services.image_service import get_image_service
+from app.services.short_term_memory import get_short_term_memory_service
 from app.utils.food_image_analyzer import analyze_food_with_qwen_vision
 
 logger = structlog.get_logger(__name__)
@@ -44,6 +45,7 @@ class UploadResponse(BaseModel):
     total_protein: float
     total_carbs: float
     total_fat: float
+    notes: str = ""  # AI 营养评价和建议
 
 
 class ConfirmRequest(BaseModel):
@@ -162,7 +164,13 @@ def recalculate_nutrition(
         items_count=len(request.items),
     )
 
-    return RecalculateResponse(**result)
+    # 转换字段名以匹配 RecalculateResponse
+    return RecalculateResponse(
+        total_calories=result["calories"],
+        total_protein=result["protein"],
+        total_carbs=result["carbs"],
+        total_fat=result["fat"],
+    )
 
 
 @router.post("/confirm")
@@ -175,7 +183,7 @@ def confirm_meal_checkin(
     用户确认后创建打卡记录
     """
     calorie_service = get_calorie_service(db)
-    image_service = get_image_service(db)
+    image_service = get_image_service()
 
     # 计算总营养
     items_dict = [item.model_dump() for item in request.items]
@@ -226,6 +234,49 @@ def confirm_meal_checkin(
         meal_id=meal.id,
         calories=nutrition["calories"],
     )
+
+    # ========== 添加到短期记忆队列 ==========
+    try:
+        meal_type_map = {
+            "breakfast": "早餐",
+            "lunch": "午餐",
+            "dinner": "晚餐",
+            "snack": "加餐",
+        }
+        meal_type_cn = meal_type_map.get(request.meal_type, request.meal_type)
+
+        # 构建食物内容描述
+        items_text = ", ".join(
+            [f"{item.name} {int(item.grams)}g" for item in request.items[:5]]
+        )
+        if len(request.items) > 5:
+            items_text += f" 等{len(request.items)}种食材"
+
+        content = f"记录了{meal_type_cn}（{meal.name}）：{items_text}，总热量{int(nutrition['calories'])}千卡"
+
+        get_short_term_memory_service().add_memory(
+            user_id=int(current_user.id),
+            event_type="meal",
+            event_source=request.meal_type,
+            content=content,
+            metrics={
+                "calories": float(nutrition["calories"]),
+                "protein": float(nutrition["protein"]),
+                "carbs": float(nutrition["carbs"]),
+                "fat": float(nutrition["fat"]),
+            },
+            context={
+                "meal_type": request.meal_type,
+                "items_count": len(request.items),
+            },
+            source_table="meals",
+            source_id=meal.id,
+        )
+
+        logger.info(f"餐食打卡已添加到短期记忆队列：{meal.id}")
+    except Exception as e:
+        logger.error(f"添加餐食打卡到短期记忆失败：{e}")
+    # ====================================
 
     return {
         "message": "打卡成功",

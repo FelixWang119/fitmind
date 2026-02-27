@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    system_config,
     ai,
     auth,
     chat,
@@ -21,7 +22,7 @@ from app.api.v1.endpoints import (
     meal_checkin,
     memory,
     # notifications,  # 临时注释，待修复认证依赖
-    nutrition,
+    # nutrition,  # 已删除 - 只保留 2 个端点，合并到 meals.py 更合适
     personalized_advice,
     professional_fusion,
     reward_analytics,
@@ -38,7 +39,7 @@ api_router = APIRouter()
 # 包含核心模块的路由
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
-api_router.include_router(nutrition.router, prefix="/nutrition", tags=["nutrition"])
+# api_router.include_router(nutrition.router, prefix="/nutrition", tags=["nutrition"])  # 已删除
 api_router.include_router(habits.router, prefix="/habits", tags=["habits"])
 api_router.include_router(habit_stats.router, prefix="/habits", tags=["habits-stats"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
@@ -133,3 +134,6 @@ api_router.include_router(
 api_router.include_router(
     user_experience.router, prefix="/user-experience", tags=["user-experience"]
 )
+
+# 系统管理端点
+api_router.include_router(system_config.router, prefix="/admin", tags=["system-config"])

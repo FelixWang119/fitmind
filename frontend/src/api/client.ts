@@ -223,6 +223,47 @@ class ApiClient {
     return response.data;
   }
 
+  // Meal Check-in (拍照识别打卡)
+  async uploadMealPhoto(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.client.post('/meal-checkin/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  async recalculateNutrition(items: any[]) {
+    const response = await this.client.post('/meal-checkin/recalculate', { items });
+    return response.data;
+  }
+
+  async confirmMealCheckin(data: any) {
+    const response = await this.client.post('/meal-checkin/confirm', data);
+    return response.data;
+  }
+
+  // Calorie Goal API
+  async getCalorieGoal(date?: string) {
+    const params = date ? { target_date: date } : {};
+    const response = await this.client.get('/meal-checkin/calorie-goal', { params });
+    return response.data;
+  }
+
+  async setCalorieGoal(data: any, date?: string) {
+    const params = date ? { target_date: date } : {};
+    const response = await this.client.post('/meal-checkin/calorie-goal', data, { params });
+    return response.data;
+  }
+
+  async getDailyBalance(date?: string) {
+    const params = date ? { target_date: date } : {};
+    const response = await this.client.get('/meal-checkin/daily-balance', { params });
+    return response.data;
+  }
+
   async getFoodItems(skip: number = 0, limit: number = 100, category?: string, isCustom?: boolean) {
     const params: any = { skip, limit };
     if (category) params.category = category;
@@ -248,13 +289,6 @@ class ApiClient {
 
   async createFoodItem(foodData: any) {
     const response = await this.client.post('/meals/food-items', foodData);
-    return response.data;
-  }
-
-  async analyzeFoodImage(imageData: string, date?: string) {
-    const payload: any = { image: imageData };
-    if (date) payload.date = date;
-    const response = await this.client.post('/nutrition/analyze-food-image', payload);
     return response.data;
   }
 
