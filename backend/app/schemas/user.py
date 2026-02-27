@@ -27,15 +27,18 @@ class UserCreate(UserBase):
 
     @validator("password")
     def validate_password_strength(cls, v):
-        """验证密码强度 - AC 要求：至少 8 位，包含字母和数字"""
+        """验证密码强度 - 要求：至少 8 位，包含大小写字母和数字"""
         if len(v) < 8:
             raise ValueError("密码至少需要 8 个字符")
         if len(v.encode("utf-8")) > 72:
             raise ValueError("密码不能超过 72 字节，请使用较短的密码")
-        has_letter = any(c.isalpha() for c in v)
+        has_upper = any(c.isupper() for c in v)
+        has_lower = any(c.islower() for c in v)
         has_digit = any(c.isdigit() for c in v)
-        if not has_letter:
-            raise ValueError("密码必须包含至少一个字母")
+        if not has_upper:
+            raise ValueError("密码必须包含至少一个大写字母")
+        if not has_lower:
+            raise ValueError("密码必须包含至少一个小写字母")
         if not has_digit:
             raise ValueError("密码必须包含至少一个数字")
         return v
@@ -107,3 +110,21 @@ class PasswordResetRequest(BaseModel):
 class PasswordReset(BaseModel):
     token: str
     new_password: str = Field(..., min_length=8)
+
+    @validator("new_password")
+    def validate_password_strength(cls, v):
+        """验证密码强度 - 要求：至少 8 位，包含大小写字母和数字"""
+        if len(v) < 8:
+            raise ValueError("密码至少需要 8 个字符")
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("密码不能超过 72 字节，请使用较短的密码")
+        has_upper = any(c.isupper() for c in v)
+        has_lower = any(c.islower() for c in v)
+        has_digit = any(c.isdigit() for c in v)
+        if not has_upper:
+            raise ValueError("密码必须包含至少一个大写字母")
+        if not has_lower:
+            raise ValueError("密码必须包含至少一个小写字母")
+        if not has_digit:
+            raise ValueError("密码必须包含至少一个数字")
+        return v

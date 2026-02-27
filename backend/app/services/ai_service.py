@@ -130,6 +130,47 @@ class AIService:
 
     def _get_nutritionist_response(self, message: str, context: Optional[Dict]) -> str:
         """获取营养师角色回复"""
+        # 查询用户今日摄入热量 - 使用短时记忆上下文
+        if any(
+            kw in message
+            for kw in [
+                "今天摄入",
+                "今天吃了多少",
+                "今日摄入",
+                "摄入多少热量",
+                "今天热量",
+            ]
+        ):
+            if self.db and self.user_id:
+                try:
+                    from app.services.memory_query_service import (
+                        get_memory_context_for_agent,
+                    )
+
+                    # 获取短时记忆上下文
+                    memory_context = get_memory_context_for_agent(self.user_id, self.db)
+
+                    if memory_context and "摄入热量" in memory_context:
+                        # 从上下文中提取热量数据
+                        for line in memory_context.split("\n"):
+                            if "摄入热量" in line:
+                                # 提取数值
+                                import re
+
+                                match = re.search(r"(\d+)\s*千卡", line)
+                                if match:
+                                    calories = match.group(1)
+                                    return f"📊 **{line.strip()}**\n\n💡 记得保持均衡饮食哦！"
+
+                        # 如果上下文中没有数据，返回默认回复
+                        return "📝 您今天还没有记录饮食哦！建议每餐后及时记录，我可以帮您分析营养情况。"
+                except Exception as e:
+                    logger.warning(
+                        "Failed to get memory context for nutritionist", error=str(e)
+                    )
+
+            return "请您记录一下今天的饮食，这样我就能帮您计算摄入的热量了~"
+
         # 分析饮食
         if any(kw in message for kw in ["吃", "喝", "早餐", "午餐", "晚餐", "食谱"]):
             # 提取食物关键词（简化版）
@@ -144,19 +185,73 @@ class AIService:
 
             return NutritionistRole.get_recipe_recommendation({})
 
-        # 计算营养目标
-        if any(kw in message for kw in ["卡路里", "热量", "营养", "BMI", "BMR"]):
+        # 计算营养目标 - 使用用户Profile数据
+        if any(
+            kw in message for kw in ["卡路里", "热量", "营养", "BMI", "BMR", "TDEE"]
+        ):
+            if self.db and self.user_id:
+                try:
+                    from app.services.profile_context_service import (
+                        get_profile_context_service,
+                    )
+
+                    # 获取用户Profile上下文
+                    profile_service = get_profile_context_service(self.db)
+                    profile_memory = profile_service.get_profile_memory(self.user_id)
+
+                    if profile_memory:
+                        calculated_metrics = profile_memory.get(
+                            "calculated_metrics", {}
+                        )
+                        basic_info = profile_memory.get("basic_info", {})
+
+                        bmr = calculated_metrics.get("bmr", 0)
+                        tdee = calculated_metrics.get("tdee", 0)
+                        bmi = calculated_metrics.get("bmi", 0)
+                        bmi_category = calculated_metrics.get("bmi_category", "未知")
+                        calorie_targets = calculated_metrics.get("calorie_targets", {})
+
+                        response = f"📊 **基于您个人档案的营养目标建议**\n\n"
+
+                        if bmr > 0:
+                            response += f"基础代谢率 (BMR): {bmr} 卡路里/天\n"
+                        if tdee > 0:
+                            response += f"每日总消耗 (TDEE): {tdee} 卡路里/天\n"
+                        if bmi > 0:
+                            response += f"身体质量指数 (BMI): {bmi} ({bmi_category})\n"
+
+                        if calorie_targets:
+                            response += f"\n🎯 **卡路里目标**:\n"
+                            response += f"• 维持体重: {calorie_targets.get('maintenance', 0)} 卡/天\n"
+                            response += f"• 健康减重: {calorie_targets.get('weight_loss', 0)} 卡/天\n"
+                            response += f"• 健康增重: {calorie_targets.get('weight_gain', 0)} 卡/天\n"
+
+                        # 添加通用营养建议
+                        response += f"\n🍽️ **通用营养建议**:\n"
+                        response += f"• 蛋白质: 约 {round(tdee * 0.3 / 4 if tdee > 0 else 50)}g/天\n"
+                        response += f"• 脂肪: 约 {round(tdee * 0.25 / 9 if tdee > 0 else 45)}g/天\n"
+                        response += f"• 碳水: 约 {round(tdee * 0.45 / 4 if tdee > 0 else 225)}g/天\n"
+                        response += f"• 水分: 约 {basic_info.get('weight', 70000) / 1000 * 30 if basic_info.get('weight') else 2100}ml/天"
+
+                        return response
+                except Exception as e:
+                    logger.warning(
+                        "Failed to get profile context for nutritionist", error=str(e)
+                    )
+
+            # 如果无法获取Profile数据，使用默认值
             goals = NutritionistRole.calculate_nutrition_goals(
                 {"weight": 70, "height": 175, "age": 30, "gender": "male"}
             )
             return (
-                f"📊 **营养目标建议**\n\n"
+                f"📊 **营养目标建议（通用示例）**\n\n"
                 f"基础代谢率 (BMR): {goals['bmr']} 卡路里/天\n"
                 f"每日总消耗 (TDEE): {goals['tdee']} 卡路里/天\n"
                 f"蛋白质：{goals['protein_g']}g/天\n"
                 f"脂肪：{goals['fat_g']}g/天\n"
                 f"碳水：{goals['carbs_g']}g/天\n"
-                f"水分：{goals['water_ml']}ml/天"
+                f"水分：{goals['water_ml']}ml/天\n\n"
+                f"💡 提示：请完善您的个人档案（年龄、性别、身高、体重等）以获得个性化的营养建议。"
             )
 
         return "您好！我是您的营养师，可以为您提供饮食分析、营养计算和食谱推荐。请告诉我您的饮食情况或营养问题！"
@@ -293,13 +388,45 @@ class AIService:
             return "每周至少 150 分钟中等强度有氧运动，加上 2-3 次力量训练。可以从快走开始，逐渐增加强度。"
         elif "压力" in message or "焦虑" in message:
             return "体重管理过程中有压力是正常的。尝试深呼吸、冥想或与朋友交流。记住，进步比完美更重要。"
+        elif any(
+            kw in message
+            for kw in ["今天摄入", "今天吃了多少", "今日摄入", "摄入多少热量"]
+        ):
+            # 查询今日摄入热量 - 使用短时记忆上下文
+            if self.db and self.user_id:
+                try:
+                    from app.services.memory_query_service import (
+                        get_memory_context_for_agent,
+                    )
+
+                    # 获取短时记忆上下文
+                    memory_context = get_memory_context_for_agent(self.user_id, self.db)
+
+                    if memory_context and "摄入热量" in memory_context:
+                        # 从上下文中提取热量数据
+                        import re
+
+                        match = re.search(r"摄入热量.*?(\d+)\s*千卡", memory_context)
+                        if match:
+                            calories = match.group(1)
+                            return f"📊 **您今天摄入了 {calories} 千卡**\n\n💡 记得保持均衡饮食哦！"
+
+                        # 如果上下文中没有数据
+                        return "📝 您今天还没有记录饮食哦！建议每餐后及时记录，我可以帮您分析营养情况。"
+                except Exception as e:
+                    logger.warning(
+                        "Failed to get memory context for general response",
+                        error=str(e),
+                    )
+
+            return "请您记录一下今天的饮食，这样我就能帮您计算摄入的热量了~"
         else:
             return "感谢您与我交流！我是您的体重管理 AI 助手，可以为您提供营养建议、运动指导和情感支持。请告诉我您今天的情况如何？"
 
     async def _get_qwen_response(
         self, message: str, context: Optional[Dict[str, Any]] = None
     ) -> AIResponse:
-        """获取通义千问回复 - 支持角色专业化"""
+        """获取通义千问回复 - 支持角色专业化 + 短时记忆上下文"""
         start_time = time.time()
 
         # 检测当前角色
@@ -316,6 +443,55 @@ class AIService:
             messages = []
             if role_prompt:
                 messages.append({"role": "system", "content": role_prompt})
+
+            # ========== 添加综合上下文（Profile + 短时记忆） ==========
+            if self.db and self.user_id:
+                try:
+                    from app.services.memory_query_service import (
+                        get_memory_context_for_agent,
+                    )
+                    from app.services.profile_context_service import (
+                        get_profile_context_service,
+                    )
+
+                    # 获取用户的短时记忆上下文
+                    memory_context = get_memory_context_for_agent(self.user_id, self.db)
+
+                    # 获取用户的Profile上下文
+                    profile_service = get_profile_context_service(self.db)
+                    profile_context = profile_service.get_profile_context(self.user_id)
+
+                    # 构建综合上下文
+                    combined_context_parts = []
+
+                    if profile_context:
+                        combined_context_parts.append(f"""【用户个人档案】
+{profile_context}""")
+
+                    if memory_context:
+                        combined_context_parts.append(f"""【用户近期健康数据】
+{memory_context}""")
+
+                    if combined_context_parts:
+                        combined_context = "\n\n".join(combined_context_parts)
+
+                        # 将综合上下文添加到 system prompt 中
+                        context_system_prompt = f"""{combined_context}
+
+请根据以上用户个人档案和健康数据回答用户的问题。如果用户询问今日摄入热量、运动消耗、BMI、BMR、TDEE、卡路里目标等信息，请直接基于以上数据回答。"""
+
+                        if messages and messages[0]["role"] == "system":
+                            # 合并到已有的 system prompt
+                            messages[0]["content"] = (
+                                messages[0]["content"] + "\n\n" + context_system_prompt
+                            )
+                        else:
+                            messages.append(
+                                {"role": "system", "content": context_system_prompt}
+                            )
+                except Exception as e:
+                    logger.warning("Failed to get context data", error=str(e))
+            # ==========================================
 
             if context and "history" in context:
                 messages.extend(context["history"])

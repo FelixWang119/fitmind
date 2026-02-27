@@ -174,3 +174,5 @@ function App() {
 }
 
 export default App;
+// 系统管理后台路由
+import AdminConfigs from './pages/admin/Configs';

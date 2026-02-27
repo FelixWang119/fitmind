@@ -11,7 +11,10 @@ from sqlalchemy.pool import StaticPool
 
 # Set test environment
 os.environ["ENVIRONMENT"] = "testing"
-os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+# 使用 PostgreSQL 测试数据库（独立于生产数据库）
+os.environ["DATABASE_URL"] = (
+    "postgresql://weight_ai_test_user:weight_ai_test_password@127.0.0.1:5432/weight_ai_db_test"
+)
 os.environ["SECRET_KEY"] = "test_secret_key_for_testing_only"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "30"
 os.environ["ALGORITHM"] = "HS256"
@@ -95,18 +98,17 @@ def create_test_health_record_data(user_id: int, overrides: dict = None) -> dict
 
 
 # =============================================================================
-# Test Database Setup
+# Test Database Setup (PostgreSQL)
 # =============================================================================
 
-# Create test database engine with proper SQLite configuration
-# 使用文件数据库而非内存数据库，避免线程问题
-TEST_DATABASE_URL = "sqlite:///./test_integration.db"
+# PostgreSQL 测试数据库连接
+TEST_DATABASE_URL = "postgresql://weight_ai_test_user:weight_ai_test_password@127.0.0.1:5432/weight_ai_db_test"
 engine = create_engine(
     TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-    pool_pre_ping=True,
     echo=False,  # 关闭 SQL 日志以提高性能
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -114,21 +116,42 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
     """在测试会话开始时创建数据库表"""
-    # 删除旧测试数据库文件（如果存在）
-    import os
-
-    if os.path.exists("./test_integration.db"):
-        os.remove("./test_integration.db")
+    # 先启用必要的扩展
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.commit()
+            print("\n✅ pgvector 扩展已启用")
+        except Exception as e:
+            print(f"\n⚠️  pgvector 扩展可能已存在：{e}")
 
     # 创建所有表
     Base.metadata.create_all(bind=engine)
 
+    # 验证表已创建
+    with engine.connect() as conn:
+        result = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"
+            )
+        )
+        table_count = result.scalar()
+        print(f"\n✅ 测试数据库已初始化，共创建 {table_count} 张表")
+
     yield
 
-    # 测试结束后清理
-    Base.metadata.drop_all(bind=engine)
-    if os.path.exists("./test_integration.db"):
-        os.remove("./test_integration.db")
+    # 测试结束后清理所有数据（保留表结构）
+    with engine.connect() as conn:
+        # 使用事务回滚来清理
+        transaction = conn.begin()
+        try:
+            # 删除所有表数据
+            conn.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE;"))
+            transaction.commit()
+            print("\n✅ 测试数据已清理")
+        except Exception:
+            transaction.rollback()
+            print("\n⚠️  数据清理跳过（表可能为空）")
 
 
 @pytest.fixture(scope="function")

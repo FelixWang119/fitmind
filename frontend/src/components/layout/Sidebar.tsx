@@ -17,16 +17,16 @@ import {
 
 const navigation = [
   { name: '仪表板', href: '/dashboard', icon: LayoutDashboard },
-  { name: '个人资料', href: '/profile', icon: User },
+  { name: '饮食记录', href: '/diet-tracking', icon: Utensils },
+  { name: '运动打卡', href: '/exercise-checkin', icon: Activity },
+  { name: 'AI助手', href: '/chat', icon: MessageCircle },
   { name: '习惯追踪', href: '/habits', icon: Target },
   { name: '习惯分析', href: '/habits-stats', icon: BarChart3 },
-  { name: '营养管理', href: '/nutrition', icon: Utensils },
-  { name: '饮食记录', href: '/diet-tracking', icon: Utensils },
   { name: '健康记录', href: '/health', icon: Activity },
   { name: '健康评估', href: '/health/assessment', icon: ClipboardCheck },
   { name: '情感支持', href: '/emotional', icon: Heart },
   { name: '成就中心', href: '/gamification', icon: Trophy },
-  { name: 'AI助手', href: '/chat', icon: MessageCircle },
+  { name: '个人资料', href: '/profile', icon: User },
 ];
 
 export default function Sidebar() {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityCard } from './ActivityCard';
 import { Dumbbell, Droplets, Flame, Calendar, Timer, CheckCircle } from 'lucide-react';
+import { numberWithCommas } from '../../utils/numUtils';
 
 interface ExerciseData {
   total_duration_minutes: number;
@@ -39,9 +40,9 @@ export const ActivitySection: React.FC<ActivitySectionProps> = ({
         icon={<Dumbbell className="w-6 h-6 text-orange-600" />}
         title="运动打卡"
         stats={[
-          { value: exerciseData?.total_duration_minutes || 0, unit: "分钟", label: "时长", color: "bg-orange-100" },
-          { value: exerciseData?.total_calories_burned || 0, unit: "卡", label: "消耗", color: "bg-red-100" },
-          { value: exerciseData?.sessions_count || 0, unit: "次", label: "打卡", color: "bg-blue-100" }
+          { value: numberWithCommas(exerciseData?.total_duration_minutes || 0), unit: "分钟", label: "时长", color: "bg-orange-100" },
+          { value: numberWithCommas(exerciseData?.total_calories_burned || 0), unit: "卡", label: "消耗", color: "bg-red-100" },
+          { value: numberWithCommas(exerciseData?.sessions_count || 0), unit: "次", label: "打卡", color: "bg-blue-100" }
         ]}
         progress={exerciseData?.progress_percentage}
         progressLabel="目标进度"
@@ -54,9 +55,9 @@ export const ActivitySection: React.FC<ActivitySectionProps> = ({
         icon={<Droplets className="w-6 h-6 text-green-600" />}
         title="饮食打卡"
         stats={[
-          { value: nutritionData?.calories_consumed || 0, unit: "卡", label: "已吃", color: "bg-green-100" },
-          { value: nutritionData?.remaining_calories || 0, unit: "卡", label: "剩余", color: "bg-yellow-100" },
-          { value: nutritionData?.meals_count || 0, unit: "餐", label: "记录", color: "bg-blue-100" }
+          { value: numberWithCommas(nutritionData?.calories_consumed || 0), unit: "卡", label: "已吃", color: "bg-green-100" },
+          { value: numberWithCommas(nutritionData?.remaining_calories || 0), unit: "卡", label: "剩余", color: "bg-yellow-100" },
+          { value: numberWithCommas(nutritionData?.meals_count || 0), unit: "餐", label: "记录", color: "bg-blue-100" }
         ]}
         progress={nutritionData?.progress_percentage}
         progressLabel="热量进度"

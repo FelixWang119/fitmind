@@ -32,6 +32,14 @@ from app.models.nutrition import Meal, MealItem, FoodItem, WaterIntake
 from app.models.calorie_goal import CalorieGoal
 from app.models.password_reset import PasswordResetToken
 from app.models.rewards import Reward, RewardRedemption
+from app.models.notification import (
+    Notification,
+    NotificationTemplate,
+    UserNotificationSetting,
+    EventLog,
+)
+from app.models.memory import UnifiedMemory
+from app.models.exercise_checkin import ExerciseCheckIn
 
 # 导出所有模型
 __all__ = [
@@ -71,4 +79,10 @@ __all__ = [
     "PasswordResetToken",
     "Reward",
     "RewardRedemption",
+    "Notification",
+    "NotificationTemplate",
+    "UserNotificationSetting",
+    "EventLog",
+    "UnifiedMemory",
+    "ExerciseCheckIn",
 ]

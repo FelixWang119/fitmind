@@ -240,12 +240,13 @@ class EventLog(Base):
     user = relationship("User")
 
     # 索引：用于轮询 pending 状态事件
+    # 注意：PostgreSQL ENUM 类型不支持 lower() 函数，直接比较枚举值
     __table_args__ = (
         Index(
             "idx_event_logs_pending",
             "notification_status",
             "occurred_at",
-            postgresql_where=func.lower(notification_status) == "pending",
+            postgresql_where=notification_status == "pending",
         ),
     )
 

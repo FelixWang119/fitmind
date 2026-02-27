@@ -8,6 +8,9 @@ from app.core.config import settings
 from app.core.database import engine
 from app.core.middleware import ErrorHandlingMiddleware, LoggingMiddleware
 
+# 导入调度器
+from app.schedulers import start_scheduler, stop_scheduler
+
 # 配置结构化日志
 structlog.configure(
     processors=[
@@ -64,6 +67,10 @@ async def startup_event():
         environment=settings.ENVIRONMENT,
     )
 
+    # 启动调度器
+    await start_scheduler()
+    logger.info("Scheduler started successfully")
+
     # 测试数据库连接
     try:
         with engine.connect() as conn:
@@ -72,11 +79,18 @@ async def startup_event():
         logger.error("Database connection failed", error=str(e))
         raise
 
+    # Note: No startup loading needed - SQLite queue persists automatically
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """应用关闭事件"""
     logger.info("Shutting down Weight AI Backend")
+
+    # 关闭调度器
+    await stop_scheduler()
+    logger.info("Scheduler stopped successfully")
+
     engine.dispose()
 
 

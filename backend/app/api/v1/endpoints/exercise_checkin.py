@@ -85,6 +85,38 @@ def create_exercise_checkin(
         calories_burned=db_checkin.calories_burned,
     )
 
+    # 添加到短期记忆队列
+    try:
+        from app.services.short_term_memory import get_short_term_memory_service
+
+        content = f"进行了{db_checkin.exercise_type}运动"
+        if db_checkin.duration_minutes:
+            content += f"时长{db_checkin.duration_minutes}分钟"
+        if db_checkin.calories_burned:
+            content += f"，消耗{db_checkin.calories_burned}千卡"
+
+        get_short_term_memory_service().add_memory(
+            user_id=current_user.id,
+            event_type="exercise",
+            event_source=db_checkin.exercise_type,
+            content=content,
+            metrics={
+                "duration": db_checkin.duration_minutes,
+                "calories": db_checkin.calories_burned,
+                "distance": db_checkin.distance_km,
+                "heart_rate": db_checkin.heart_rate_avg,
+            },
+            context={
+                "category": db_checkin.category,
+                "intensity": db_checkin.intensity,
+            },
+            source_table="exercise_checkins",
+            source_id=db_checkin.id,
+        )
+        logger.info(f"运动打卡已添加到短期记忆队列: {db_checkin.id}")
+    except Exception as e:
+        logger.error(f"添加运动打卡到短期记忆失败: {e}")
+
     # 构建响应 (包含估算详情)
     response = ExerciseCheckInResponse.model_validate(db_checkin)
     response.estimation_details = calorie_result["estimation_details"]
@@ -375,5 +407,3 @@ def delete_exercise_checkin(
         checkin_id=checkin_id,
         user_id=current_user.id,
     )
-
-

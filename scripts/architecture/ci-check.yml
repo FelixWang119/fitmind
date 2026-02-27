@@ -1,0 +1,102 @@
+name: Architecture Consistency Check
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/architecture/**'
+      - 'backend/app/services/**'
+      - 'backend/app/models/**'
+      - 'backend/app/api/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/architecture/**'
+      - 'backend/app/services/**'
+      - 'backend/app/models/**'
+      - 'backend/app/api/**'
+
+jobs:
+  architecture-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyyaml
+        
+    - name: Run architecture consistency check
+      id: arch-check
+      run: |
+        echo "🔍 Running architecture consistency check..."
+        python scripts/architecture/check_document_consistency.py --format json --output arch-report.json
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ Architecture check passed"
+          echo "::set-output name=status::success"
+        else
+          echo "❌ Architecture check failed"
+          echo "::set-output name=status::failure"
+        fi
+        
+    - name: Upload architecture report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: architecture-report
+        path: arch-report.json
+        
+    - name: Comment on PR with results
+      if: github.event_name == 'pull_request' && steps.arch-check.outputs.status == 'failure'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('arch-report.json', 'utf8'));
+          
+          let comment = `## 🏗️ Architecture Consistency Check Failed\n\n`;
+          comment += `**Summary**: ${report.summary.failed} failures, ${report.summary.warnings} warnings\n\n`;
+          
+          if (report.summary.failed > 0) {
+            comment += `### ❌ Failures:\n`;
+            report.checks.filter(c => c.status === '❌').forEach(check => {
+              comment += `- **${check.id}**: ${check.description}\n`;
+              comment += `  - File: ${check.file || 'N/A'}:${check.line}\n`;
+              comment += `  - Details: ${check.details}\n`;
+              comment += `  - Suggestion: ${check.suggestion}\n\n`;
+            });
+          }
+          
+          if (report.summary.warnings > 0) {
+            comment += `### ⚠️ Warnings:\n`;
+            report.checks.filter(c => c.status === '⚠️').forEach(check => {
+              comment += `- **${check.id}**: ${check.description}\n`;
+            });
+          }
+          
+          comment += `\n### 📋 Next Steps:\n`;
+          comment += `1. Review the architecture decisions in \`docs/architecture/decisions/\`\n`;
+          comment += `2. Fix the implementation to match the documented architecture\n`;
+          comment += `3. Request an architecture review if changes are needed\n`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+          
+    - name: Fail if architecture check failed
+      if: steps.arch-check.outputs.status == 'failure'
+      run: |
+        echo "❌ Architecture consistency check failed. Please fix the issues above."
+        exit 1

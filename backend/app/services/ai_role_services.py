@@ -139,6 +139,69 @@ class NutritionistRole:
             "water_ml": 2500,
         }
 
+    @classmethod
+    def get_today_intake_summary(cls, db: Any, user_id: int) -> Optional[str]:
+        """
+        获取用户今日摄入热量摘要
+
+        Args:
+            db: 数据库会话
+            user_id: 用户ID
+
+        Returns:
+            摄入摘要字符串，如果没有记录返回 None
+        """
+        try:
+            from app.models.nutrition import Meal
+            from app.models.exercise_checkin import ExerciseCheckIn
+            from datetime import date
+
+            # 查询今天的所有餐食
+            today_meals = (
+                db.query(Meal)
+                .filter(
+                    Meal.user_id == user_id,
+                    func.date(Meal.meal_datetime) == date.today(),
+                )
+                .all()
+            )
+
+            total_calories = sum(meal.calories or 0 for meal in today_meals)
+
+            if total_calories > 0:
+                meal_count = len(today_meals)
+
+                # 构建详细摘要
+                summary_parts = [
+                    f"📊 **您今天摄入了 {total_calories} 千卡**",
+                    f"共 {meal_count} 餐",
+                ]
+
+                # 按餐类型统计
+                meal_types = {}
+                for meal in today_meals:
+                    mtype = meal.meal_type or "unknown"
+                    meal_types[mtype] = meal_types.get(mtype, 0) + (meal.calories or 0)
+
+                type_map = {
+                    "breakfast": "早餐",
+                    "lunch": "午餐",
+                    "dinner": "晚餐",
+                    "snack": "加餐",
+                }
+
+                for mtype, calories in meal_types.items():
+                    cn_type = type_map.get(mtype, mtype)
+                    summary_parts.append(f"- {cn_type}: {calories} 千卡")
+
+                return "\n".join(summary_parts)
+
+            return None
+
+        except Exception as e:
+            logger.warning("Failed to get today's intake", error=str(e))
+            return None
+
 
 class BehaviorCoachRole:
     """行为教练角色 - 提供习惯养成和行为改变指导"""

@@ -1,10 +1,14 @@
 """记忆系统API端点"""
 
+import logging
 from datetime import date
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.services.context_builder import AdvancedContextBuilder
@@ -14,8 +18,49 @@ from app.services.milestone_detector import MilestoneDetector
 from app.services.pattern_recognizer import PatternRecognizer
 from app.services.personalization_engine import PersonalizationEngine
 from app.services.trend_analyzer import TrendAnalyzer
+from app.models.memory import UnifiedMemory
 
 router = APIRouter(prefix="/memory", tags=["记忆系统"])
+
+
+class UnifiedMemoryRequest(BaseModel):
+    """统一记忆请求模型"""
+
+    user_id: int
+    memory_type: str
+    content_summary: str
+    content_keywords: Optional[List[str]] = None
+    source_type: str
+    source_id: str
+    importance_score: Optional[float] = 5.0
+
+
+class SearchMemoriesRequest(BaseModel):
+    """搜索记忆请求模型"""
+
+    user_id: int
+    query: str
+    memory_types: Optional[List[str]] = None
+    limit: Optional[int] = 10
+
+
+class SearchResult(BaseModel):
+    """搜索结果模型"""
+
+    id: str
+    memory_type: str
+    content_summary: str
+    source_type: str
+    source_id: str
+    similarity: float
+    importance_score: float
+    created_at: str
+
+
+class SearchResponse(BaseModel):
+    results: List[SearchResult]
+    query: str
+    total: int
 
 
 # ========== 记忆管理端点 ==========
@@ -30,7 +75,7 @@ async def create_memory(
     importance_score: float = 1.0,
     db: Session = Depends(get_db),
 ):
-    """创建记忆"""
+    """创建原有内存项（兼容保留）"""
     manager = MemoryManager(db)
     memory = await manager.create_memory(
         user_id=user_id,
@@ -46,6 +91,54 @@ async def create_memory(
     return {"success": True, "memory_id": memory.id}
 
 
+@router.post("/unified-memories")
+async def create_unified_memory(
+    request: UnifiedMemoryRequest,
+    db: Session = Depends(get_db),
+):
+    """创建统一记忆"""
+    logger.debug(
+        f"开始创建统一记忆 - 用户ID: {request.user_id}, "
+        f"记忆类型: {request.memory_type}, 源类型: {request.source_type}"
+    )
+
+    # 创建新的统一记忆项
+    memory = UnifiedMemory(
+        user_id=request.user_id,
+        memory_type=request.memory_type,
+        content_summary=request.content_summary,
+        content_keywords=request.content_keywords or [],
+        source_type=request.source_type,
+        source_id=request.source_id,
+        importance_score=request.importance_score,
+    )
+
+    # 生成向量嵌入
+    from app.services.embedding.factory import EmbeddingProviderFactory
+
+    try:
+        provider = EmbeddingProviderFactory.get_provider()
+        embedding = provider.embed(request.content_summary)
+        memory.set_embedding(embedding)
+        logger.debug(
+            f"向量嵌入生成成功 - 记忆ID: {memory.id}, 嵌入维度: {len(embedding)}"
+        )
+    except Exception as e:
+        logger.warning(f"向量嵌入生成失败: {e}")
+        # 继续执行，没有嵌入也能创建
+
+    db.add(memory)
+    db.commit()
+    db.refresh(memory)
+
+    logger.info(
+        f"统一记忆创建成功 - 记忆ID: {memory.id}, 用户ID: {request.user_id}, "
+        f"记忆类型: {request.memory_type}, 重要性分数: {request.importance_score}"
+    )
+
+    return {"success": True, "memory_id": memory.id, "id": memory.id}
+
+
 @router.get("/memories")
 async def get_memories(
     user_id: int,
@@ -53,9 +146,19 @@ async def get_memories(
     min_importance: float = 0.0,
     db: Session = Depends(get_db),
 ):
-    """获取记忆列表"""
+    """获取记忆列表（兼容保留）"""
+    logger.debug(
+        f"开始获取记忆列表 - 用户ID: {user_id}, "
+        f"记忆类型: {memory_type}, 最小重要性: {min_importance}"
+    )
+
     manager = MemoryManager(db)
     memories = await manager.get_memories(user_id, memory_type, min_importance)
+
+    logger.info(
+        f"记忆列表获取成功 - 用户ID: {user_id}, "
+        f"记忆数量: {len(memories)}, 记忆类型: {memory_type or '全部'}"
+    )
 
     return {
         "success": True,
@@ -66,7 +169,53 @@ async def get_memories(
                 "memory_type": m.memory_type,
                 "memory_key": m.memory_key,
                 "importance_score": m.importance_score,
-                "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+                "updated_at": str(m.updated_at) if m.updated_at is not None else None,
+            }
+            for m in memories
+        ],
+    }
+
+
+@router.get("/unified-memories")
+async def get_unified_memories(
+    user_id: int,
+    memory_type: Optional[str] = None,
+    source_type: Optional[str] = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    """获取统一记忆列表"""
+    query = db.query(UnifiedMemory).filter(UnifiedMemory.user_id == user_id)
+
+    if memory_type:
+        query = query.filter(UnifiedMemory.memory_type == memory_type)
+    if source_type:
+        query = query.filter(UnifiedMemory.source_type == source_type)
+
+    # 按重要性和创建时间排序
+    query = query.order_by(UnifiedMemory.importance_score.desc()).order_by(
+        UnifiedMemory.created_at.desc()
+    )
+
+    memories = query.offset(offset).limit(limit).all()
+
+    return {
+        "success": True,
+        "count": len(memories),
+        "memories": [
+            {
+                "id": str(m.id),
+                "memory_type": m.memory_type,
+                "content_summary": m.content_summary,
+                "content_keywords": m.get_keywords(),
+                "source_type": m.source_type,
+                "source_id": m.source_id,
+                "importance_score": m.importance_score,
+                "created_at": m.created_at.isoformat()
+                if m.created_at is not None
+                else None,
+                "has_embedding": m.get_embedding() is not None,
             }
             for m in memories
         ],
@@ -80,6 +229,57 @@ async def get_memory_stats(user_id: int, db: Session = Depends(get_db)):
     stats = await manager.get_memory_stats(user_id)
 
     return {"success": True, "stats": stats}
+
+
+# ========== 语义搜索端点 ==========
+
+
+@router.post("/search")
+async def search_memories(
+    request: SearchMemoriesRequest,
+    db: Session = Depends(get_db),
+):
+    """语义搜索记忆"""
+    logger.debug(
+        f"开始语义搜索记忆 - 用户ID: {request.user_id}, "
+        f"查询: {request.query[:50]}..., 限制: {request.limit}"
+    )
+
+    from app.services.semantic_search_service import SemanticSearchService
+
+    service = SemanticSearchService(
+        embedding_provider=EmbeddingProviderFactory.get_provider(), db_session=db
+    )
+
+    results = await service.search(
+        user_id=request.user_id,
+        query=request.query,
+        memory_types=request.memory_types,
+        limit=request.limit,
+    )
+
+    logger.info(
+        f"语义搜索完成 - 用户ID: {request.user_id}, "
+        f"查询: {request.query[:30]}..., 结果数量: {len(results)}"
+    )
+
+    return {
+        "results": [
+            SearchResult(
+                id=str(r.id),
+                memory_type=r.memory_type,
+                content_summary=r.content_summary,
+                source_type=r.source_type,
+                source_id=r.source_id,
+                similarity=1 - r.similarity,  # 相似度计算中距离越小越相似
+                importance_score=float(r.importance_score),
+                created_at=str(r.created_at) if r.created_at is not None else None,
+            ).dict()
+            for r in results
+        ],
+        "query": request.query,
+        "total": len(results),
+    }
 
 
 # ========== 趋势分析端点 ==========

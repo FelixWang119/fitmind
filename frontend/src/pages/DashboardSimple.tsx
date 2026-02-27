@@ -7,9 +7,10 @@ import {
   CalorieCard,
   StepCountCard,
   SleepCard,
-  WaterIntakeCard 
+  WaterIntakeCard
 } from '../components/Dashboard/Cards';
 import { ActivitySection } from '../components/Dashboard/ActivitySection';
+import { numberWithCommas, roundToDecimal } from '../utils/numUtils';
 
 interface NutritionData {
   calories_consumed: number;
@@ -86,10 +87,37 @@ export default function DashboardSimple() {
         progress_percentage: 60
       });
       
-      setData({
-        ...dashboardData,
-        quick_stats: quickStatsData,
-      });
+       setData({
+         ...dashboardData,
+         quick_stats: quickStatsData,
+       });
+       
+       // 加载营养目标数据以供对比
+       try {
+         const nutritionGoals = await api.getNutritionRecommendations();
+         const targetCalories = nutritionGoals.calorie_targets?.target || 2000;
+         const intakeCalories = quickStatsData.intake_calories || 0;
+         const caloriesRemaining = targetCalories - intakeCalories;
+         
+         // 更新 nutritionData 来显示目标进度
+         setNutritionData({
+           calories_consumed: intakeCalories,
+           remaining_calories: Math.max(0, caloriesRemaining),
+           meals_count: Math.floor(Math.random() * 6), // 模拟餐数
+           progress_percentage: Math.min(100, Math.round((intakeCalories / targetCalories) * 100))
+         });
+       } catch (err) {
+         console.error('加载营养目标数据失败:', err);
+         // 使用默认值
+         const defaultTarget = 2000;
+         const intakeCalories = quickStatsData.intake_calories || 1800;
+         setNutritionData({
+           calories_consumed: intakeCalories,
+           remaining_calories: defaultTarget - intakeCalories,
+           meals_count: 5,
+           progress_percentage: Math.min(100, Math.round((intakeCalories / defaultTarget) * 100))
+         });
+       }
     } catch (err) {
       console.error('加载数据失败:', err);
       // 使用模拟数据
@@ -157,12 +185,39 @@ export default function DashboardSimple() {
       <main className="max-w-7xl mx-auto p-6">
         {/* 快速统计 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <CalorieCard 
-            today_calories={data.quick_stats?.today_calories}
-            intake_calories={data.quick_stats?.intake_calories}
-            basal_metabolism={data.quick_stats?.basal_metabolism}
-            exercise_calories_burned={data.quick_stats?.exercise_calories_burned}
-          />
+          {/* 热量净变化 - 占两格，对齐其他卡片高度 */}
+          <div className="lg:col-span-2">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow p-6 text-white h-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="bg-white/20 p-2 rounded-lg mr-3">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-blue-100">热量净变化</p>
+                     <p className="text-2xl font-bold">
+                       {numberWithCommas(roundToDecimal(data.quick_stats?.intake_calories ? data.quick_stats.intake_calories - (data.quick_stats.basal_metabolism || 2000) - (data.quick_stats.exercise_calories_burned || 0) : 0))}
+                     </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 text-sm">
+                   <div className="text-center px-2">
+                     <div className="opacity-70 text-xs">摄入</div>
+                     <div className="font-medium">{numberWithCommas(data.quick_stats?.intake_calories || 0)}</div>
+                   </div>
+                   <div className="text-center px-2">
+                     <div className="opacity-70 text-xs">基础</div>
+                     <div className="font-medium">{numberWithCommas(data.quick_stats?.basal_metabolism || 2000)}</div>
+                   </div>
+                   <div className="text-center px-2">
+                     <div className="opacity-70 text-xs">运动</div>
+                     <div className="font-medium">{numberWithCommas(data.quick_stats?.exercise_calories_burned || 0)}</div>
+                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
           
           <StepCountCard 
             daily_step_count={data.quick_stats?.daily_step_count}
@@ -170,10 +225,6 @@ export default function DashboardSimple() {
 
           <WaterIntakeCard 
             water_intake_ml={data.quick_stats?.water_intake_ml}
-          />
-
-          <SleepCard 
-            sleep_hours={data.quick_stats?.sleep_hours}
           />
         </div>
 

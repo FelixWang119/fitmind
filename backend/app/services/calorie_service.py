@@ -174,16 +174,16 @@ class CalorieService:
             .all()
         )
 
-        actual_calories = sum(meal.calories or 0 for meal in meals)
-        actual_protein = sum(meal.protein or 0 for meal in meals)
-        actual_carbs = sum(meal.carbs or 0 for meal in meals)
-        actual_fat = sum(meal.fat or 0 for meal in meals)
+        actual_calories = round(sum(meal.calories or 0 for meal in meals), 1)
+        actual_protein = round(sum(meal.protein or 0 for meal in meals), 1)
+        actual_carbs = round(sum(meal.carbs or 0 for meal in meals), 1)
+        actual_fat = round(sum(meal.fat or 0 for meal in meals), 1)
 
         # 计算余额
-        balance_calories = goal["calories"] - actual_calories
-        balance_protein = goal["protein"] - actual_protein
-        balance_carbs = goal["carbs"] - actual_carbs
-        balance_fat = goal["fat"] - actual_fat
+        balance_calories = round(goal["calories"] - actual_calories, 1)
+        balance_protein = round(goal["protein"] - actual_protein, 1)
+        balance_carbs = round(goal["carbs"] - actual_carbs, 1)
+        balance_fat = round(goal["fat"] - actual_fat, 1)
 
         # 计算状态
         if actual_calories == 0:

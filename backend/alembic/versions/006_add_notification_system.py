@@ -117,7 +117,7 @@ def upgrade():
         sa.Column("read_at", sa.DateTime(), nullable=True),
         sa.Column(
             "metadata_",
-            sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text())),
+            postgresql.JSONB(astext_type=sa.Text()),
             nullable=True,
         ),
         sa.Column("source_type", sa.String(50), nullable=True),

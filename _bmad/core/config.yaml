@@ -7,3 +7,8 @@ user_name: Felix
 communication_language: Chinese
 document_output_language: Chinese
 output_folder: "{project-root}/_bmad_out"
+
+# Project Knowledge - 关键项目规范
+project_knowledge:
+  - "{project-root}/PROJECT_COLLABORATION_STANDARDS.md"
+  - "{project-root}/docs/index.md"

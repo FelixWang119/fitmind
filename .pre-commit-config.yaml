@@ -76,6 +76,18 @@ repos:
       - id: bandit
         args: ['-c', 'pyproject.toml']
 
+  # 架构文档一致性检查
+  - repo: local
+    hooks:
+      - id: architecture-consistency-check
+        name: 架构文档一致性检查
+        entry: python scripts/architecture/check_document_consistency.py
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        verbose: true
+
 # 全局配置
 default_stages: [commit]
 default_language_version:

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Trash2, X, ChevronDown, ChevronUp, Scale, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Camera, Trash2, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 // import { useAuthStore } from '../store/authStore'; // 暂未使用
 import { api } from '../api/client';
 
+// 简化食物项接口
 interface FoodItem {
   id?: number;
   name: string;
@@ -268,6 +269,28 @@ const DietTracking: React.FC = () => {
     return 0;
   };
 
+  // 计算三餐总计
+  const getTotalNutrition = () => {
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+    
+    meals.forEach(meal => {
+      totalCalories += getMealTotalCalories(meal);
+      totalProtein += meal.protein || 0;
+      totalCarbs += meal.carbs || 0;
+      totalFat += meal.fat || 0;
+    });
+    
+    return {
+      calories: Math.round(totalCalories),
+      protein: Math.round(totalProtein),
+      carbs: Math.round(totalCarbs),
+      fat: Math.round(totalFat)
+    };
+  };
+
   // 获取每日餐食
   const fetchDailyMeals = async () => {
     try {
@@ -286,6 +309,13 @@ const DietTracking: React.FC = () => {
     fetchDailyMeals();
   }, [selectedDate]);
 
+  // 调试 ref 绑定
+  useEffect(() => {
+    return () => {
+      // 清理
+    };
+  }, []);
+
   // 处理照片上传
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -293,8 +323,6 @@ const DietTracking: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataURL = reader.result as string;
-        // 提取纯base64部分（去掉 data:image/jpeg;base64, 前缀）
-        // 后端期望纯base64字符串，它会自己添加 data:image/jpeg;base64, 前缀
         const pureBase64 = dataURL.split(',')[1];
         setSelectedPhoto(pureBase64);
         setShowPhotoModal(true);
@@ -309,7 +337,17 @@ const DietTracking: React.FC = () => {
     
     try {
       setAnalyzingPhoto(true);
-      const response = await api.analyzeFoodImage(selectedPhoto);
+      // 创建 File 对象用于上传
+      const byteString = atob(selectedPhoto);
+      const mimeString = 'image/jpeg';
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      const file = new File([ab], 'photo.jpg', { type: mimeString });
+      
+      const response = await api.uploadMealPhoto(file);
       setPhotoAnalysis(response);
       
       // 分析成功后关闭模态框，但保留 selectedPhoto 和 photoAnalysis
@@ -353,13 +391,38 @@ const DietTracking: React.FC = () => {
       
       // 检查是否已存在同类型同时间的餐食
       // 使用更宽松的匹配：同一天、同餐次类型
-      const mealDate = new Date(`${selectedDate}T12:00:00`);
+      // 直接从后端返回的 meals 数组中查找，确保数据是最新的
       const existingMeal = meals.find(meal => {
-        const mealTime = new Date(meal.meal_datetime);
-        const isSameDay = mealTime.toDateString() === mealDate.toDateString();
-        const isSameMealType = meal.meal_type === selectedMealType; // ✅ 使用用户选择的餐次
+        // 从 meal_datetime 解析日期部分（YYYY-MM-DD）
+        const mealDateStr = meal.meal_datetime.split('T')[0];
+        const isSameDay = mealDateStr === selectedDate;
+        const isSameMealType = meal.meal_type === selectedMealType;
         return isSameDay && isSameMealType;
       });
+      
+      console.log('🔍 检查重复餐食:', {
+        selectedMealType,
+        selectedDate,
+        existingMealId: existingMeal?.id,
+        existingMealType: existingMeal?.meal_type,
+        existingMealName: existingMeal?.name,
+        totalMeals: meals.length,
+        isUpdate: !!existingMeal,
+        mealsOnSelectedDate: meals.filter(m => m.meal_datetime.split('T')[0] === selectedDate)
+      });
+      
+      if (existingMeal) {
+        console.log('📝 将更新现有餐食:', {
+          id: existingMeal.id,
+          name: existingMeal.name,
+          oldCalories: existingMeal.calories,
+          newCalories: photoAnalysis.total_calories
+        });
+      } else {
+        console.log('➕ 将创建新餐食');
+      }
+      
+      console.log('📦 发送的餐食数据:', JSON.stringify(mealData, null, 2));
       
       if (existingMeal) {
         // 更新现有餐食
@@ -407,11 +470,6 @@ const DietTracking: React.FC = () => {
     }
   };
 
-  // 计算今日总热量
-  const getTodayTotalCalories = () => {
-    return Math.round(meals.reduce((total, meal) => total + getMealTotalCalories(meal), 0));
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
@@ -421,8 +479,9 @@ const DietTracking: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 左侧：拍照识别 */}
-          <div className="lg:col-span-2">
+          {/* 左侧：拍照识别 + 餐食记录 */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            {/* 拍照识别 */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">拍照识别食材</h2>
               
@@ -448,25 +507,21 @@ const DietTracking: React.FC = () => {
 
               {/* 拍照区域 */}
               <div className="mb-8">
-                <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-purple-400 transition-colors">
+                <label className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-purple-400 transition-colors cursor-pointer block">
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     onChange={handlePhotoUpload}
-                    className="hidden"
-                    id="photo-upload"
+                    className="absolute opacity-0 w-0 h-0"
                   />
-                  <label htmlFor="photo-upload" className="cursor-pointer block">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Camera className="w-8 h-8 text-purple-500" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">拍照识别食材</h3>
-                    <p className="text-gray-600 mb-6">
-                      点击上方按钮拍照或选择照片，AI将自动识别食材并计算营养成分
-                    </p>
-                  </label>
-                </div>
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Camera className="w-8 h-8 text-purple-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">拍照识别食材</h3>
+                  <p className="text-gray-600 mb-6">
+                    点击上方按钮拍照或选择照片，AI 将自动识别食材并计算营养成分
+                  </p>
+                </label>
               </div>
 
               {/* 照片分析结果 */}
@@ -528,7 +583,7 @@ const DietTracking: React.FC = () => {
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0">
                           <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Scale className="w-5 h-5 text-blue-600" />
+                            <div className="w-5 h-5 text-blue-600">⚖️</div>
                           </div>
                         </div>
                         <div className="flex-1">
@@ -553,10 +608,8 @@ const DietTracking: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* 右侧：餐食记录 */}
-          <div>
+            
+            {/* 餐食记录 */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               {/* 日期选择器 */}
               <div className="relative mb-6">
@@ -700,12 +753,12 @@ const DietTracking: React.FC = () => {
               </div>
               
               {/* 餐食统计 */}
-              <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-200">
                 <div className="text-sm text-gray-600">
                   <span className="font-medium">{meals.length}</span> 餐
                 </div>
                 <div className="text-sm text-gray-600">
-                  总热量：<span className="font-medium text-red-600">{getTodayTotalCalories()}</span> 大卡
+                  总热量：<span className="font-medium text-red-600">{getTotalNutrition().calories}</span> 大卡
                 </div>
               </div>
               
@@ -723,7 +776,7 @@ const DietTracking: React.FC = () => {
                     {isToday ? '今日还没有记录餐食' : `${formatDate(selectedDate)}没有记录餐食`}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {isToday ? '点击左侧开始记录第一餐' : '切换到今天或选择其他日期查看'}
+                    {isToday ? '点击上方开始记录第一餐' : '切换到今天或选择其他日期查看'}
                   </p>
                 </div>
               ) : (
@@ -838,6 +891,68 @@ const DietTracking: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* 右侧：营养汇总 */}
+          <div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">营养总览</h2>
+              
+              {/* 今日总营养汇总 */}
+              <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-4 mb-4 border border-red-100">
+                <h3 className="font-semibold text-gray-900 mb-3">今日总营养汇总</h3>
+                
+                <div className="space-y-4">
+                  <div className="bg-red-100 rounded-lg p-3">
+                    <div className="text-xs text-red-700 font-semibold mb-1">总热量</div>
+                    <div className="text-2xl font-bold text-red-600">{getTotalNutrition().calories}</div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-gray-600">蛋白质</div>
+                      <div className="text-base font-bold text-gray-800">{getTotalNutrition().protein}g</div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-gray-600">碳水</div>
+                      <div className="text-base font-bold text-gray-800">{getTotalNutrition().carbs}g</div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-gray-600">脂肪</div>
+                      <div className="text-base font-bold text-gray-800">{getTotalNutrition().fat}g</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+    
+              {/* 餐次统计 */}
+              <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-4 border border-green-100">
+                <h3 className="font-semibold text-gray-900 mb-3">餐次统计</h3>
+                
+                <div className="space-y-3">
+                  {mealTypeOptions.map((option) => {
+                    const mealCount = meals.filter(m => m.meal_type === option.value).length;
+                    if (mealCount > 0) {
+                      return (
+                        <div key={option.value} className="flex justify-between items-center">
+                          <div className={`px-2 py-1 text-xs rounded-full ${option.color}`}>
+                            {option.label}
+                          </div>
+                          <div className="text-gray-700 font-medium">{mealCount}餐</div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                  
+                  {meals.length === 0 && (
+                    <div className="text-center text-gray-500 text-sm py-2">
+                      暂无餐食记录
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
