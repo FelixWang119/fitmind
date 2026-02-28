@@ -12,7 +12,6 @@ from app.models.user import User as UserModel
 from app.models.health_record import HealthRecord
 from app.models.habit import Habit, HabitCompletion
 from app.models.nutrition import Meal
-from app.models.emotional_support import EmotionalSupport, EmotionalState
 from app.models.gamification import UserPoints, Achievement
 from app.schemas.health_advice import (
     PersonalizedHealthAdviceRequest,
@@ -163,34 +162,6 @@ async def get_personalized_health_advice(
                 ),
             }
 
-        # Get emotional check-ins
-        emotional_records = (
-            db.query(EmotionalSupport, EmotionalState)
-            .join(
-                EmotionalState, EmotionalSupport.emotional_state_id == EmotionalState.id
-            )
-            .filter(
-                EmotionalSupport.user_id == current_user.id,
-                EmotionalSupport.created_at >= start_date,
-            )
-            .order_by(EmotionalSupport.created_at.desc())
-            .all()
-        )
-
-        emotional_data = {}
-        if emotional_records:
-            mood_values = [
-                ec.intensity_level for ec, _ in emotional_records if ec.intensity_level
-            ]
-            emotional_data["mood_trends"] = {
-                "average_mood": round(sum(mood_values) / len(mood_values), 1)
-                if mood_values
-                else 0,
-                "mood_consistency": len(mood_values)
-                >= 5,  # Check if user records mood regularly enough for analysis
-                "emotional_entries_count": len(emotional_records),
-            }
-
         # Create user profile for personalized AI
         user_profile = UserHealthProfile(
             user_id=current_user.id,
@@ -198,7 +169,6 @@ async def get_personalized_health_advice(
             health_trends=trends_data,
             habit_compliance=habit_stats,
             nutrition_summary=nutrition_data,
-            emotional_summary=emotional_data,
             personal_factors={
                 "age": current_user.age,
                 "gender": current_user.gender,
@@ -301,7 +271,6 @@ async def get_comprehensive_user_profile(
         "health_trends": {},
         "habit_compliance": {},
         "nutrition_summary": {},
-        "emotional_summary": {},
     }
 
     # Fetch health records for trend data
@@ -408,31 +377,6 @@ async def get_comprehensive_user_profile(
             }
         }
 
-    # Get emotional data
-    emotional_records = (
-        db.query(EmotionalSupport, EmotionalState)
-        .join(EmotionalState, EmotionalSupport.emotional_state_id == EmotionalState.id)
-        .filter(
-            EmotionalSupport.user_id == current_user.id,
-            EmotionalSupport.created_at >= start_date,
-        )
-        .all()
-    )
-
-    if emotional_records:
-        mood_values = [
-            ec.intensity_level for ec, _ in emotional_records if ec.intensity_level
-        ]
-        profile_data["emotional_summary"] = {
-            "mood_trends": {
-                "average_mood": round(sum(mood_values) / len(mood_values), 1)
-                if mood_values
-                else 0,
-                "mood_consistency": len(mood_values) >= 5,
-                "emotional_entries_count": len(emotional_records),
-            }
-        }
-
     logger.info("Comprehensive user profile generated", user_id=current_user.id)
 
     return UserHealthProfile(**profile_data)
@@ -458,14 +402,13 @@ async def generate_personalized_health_plan(
     # Construct prompt for AI
     plan_prompt = (
         f"根据用户健康档案生成个性化健康计划:\n"
-        f"年龄: {health_profile.get('personal_factors', {}).get('age')}\n"
-        f"性别: {health_profile.get('personal_factors', {}).get('gender')}\n"
-        f"身高: {health_profile.get('personal_factors', {}).get('height_cm')}cm\n"
-        f"体重趋势: {health_profile.get('health_trends', {}).get('weight', {}).get('trend_direction', 'unknown')}\n"
-        f"习惯遵守率: {health_profile.get('habit_compliance')}\n"
-        f"饮食概要: {health_profile.get('nutrition_summary')}\n"
-        f"情绪概况: {health_profile.get('emotional_summary')}\n"
-        f"请提供为期4周的个性化健康计划，包含每日小步骤、每周目标和健康贴士。"
+        f"年龄：{health_profile.get('personal_factors', {}).get('age')}\n"
+        f"性别：{health_profile.get('personal_factors', {}).get('gender')}\n"
+        f"身高：{health_profile.get('personal_factors', {}).get('height_cm')}cm\n"
+        f"体重趋势：{health_profile.get('health_trends', {}).get('weight', {}).get('trend_direction', 'unknown')}\n"
+        f"习惯遵守率：{health_profile.get('habit_compliance')}\n"
+        f"饮食概要：{health_profile.get('nutrition_summary')}\n"
+        f"请提供为期 4 周的个性化健康计划，包含每日小步骤、每周目标和健康贴士。"
     )
 
     try:

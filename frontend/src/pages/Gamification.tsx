@@ -22,6 +22,9 @@ const Gamification: React.FC = () => {
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [dailyReward, setDailyReward] = useState<{ day: number; points: number; bonus?: string; claimed: boolean } | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [nutritionAchievements, setNutritionAchievements] = useState<any[]>([]);
+  const [exerciseAchievements, setExerciseAchievements] = useState<any[]>([]);
 
   useEffect(() => {
     loadAllData();
@@ -35,16 +38,27 @@ const Gamification: React.FC = () => {
       const [
         overviewData,
         historyData,
-        rewardData
+        rewardData,
+        nutritionData
       ] = await Promise.all([
         api.getGamificationOverview(),
         api.getPointsHistory(20),
-        api.getDailyReward()
+        api.getDailyReward(),
+        api.getNutritionAchievements() // Story 4.1
       ]);
 
       setOverview(overviewData);
       setPointsHistory(historyData);
       setDailyReward(rewardData);
+      setNutritionAchievements(nutritionData);
+      
+      // 加载运动成就 (Story 4.2)
+      try {
+        const exerciseData = await api.getExerciseAchievements();
+        setExerciseAchievements(exerciseData);
+      } catch (error) {
+        console.error('Failed to load exercise achievements:', error);
+      }
     } catch (error) {
       console.error('Failed to load gamification data:', error);
     } finally {
@@ -386,6 +400,126 @@ const Gamification: React.FC = () => {
                         <div 
                           className="bg-yellow-500 h-2 rounded-full transition-all duration-500"
                           style={{ width: `${achievement.progress_percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Story 4.1: 营养成就 */}
+          {nutritionAchievements.length > 0 && (
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">🍎 营养成就</h2>
+                <span className="text-sm text-gray-500">
+                  {nutritionAchievements.filter((a: any) => a.is_completed).length} / {nutritionAchievements.length} 已完成
+                </span>
+              </div>
+              <div className="space-y-4">
+                {nutritionAchievements.map((achievement: any) => (
+                  <div 
+                    key={achievement.id} 
+                    className={`border rounded-lg p-4 ${
+                      achievement.is_completed 
+                        ? 'border-green-300 bg-green-50' 
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center">
+                        {achievement.is_completed ? (
+                          <span className="text-2xl mr-2">🏆</span>
+                        ) : (
+                          <span className="text-2xl mr-2">🎯</span>
+                        )}
+                        <h3 className="font-semibold text-gray-900">{achievement.achievement_name}</h3>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        achievement.is_completed 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {achievement.points_reward} 积分
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-3">{achievement.achievement_description}</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>进度</span>
+                        <span>{achievement.current_value} / {achievement.target_value}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-500 ${
+                            achievement.is_completed ? 'bg-green-500' : 'bg-orange-500'
+                          }`}
+                          style={{ width: `${achievement.progress_percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Story 4.2: 运动成就 */}
+          {exerciseAchievements.length > 0 && (
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">🏃 运动成就</h2>
+                <span className="text-sm text-gray-500">
+                  {exerciseAchievements.filter((a: any) => a.is_completed).length} / {exerciseAchievements.length} 已完成
+                </span>
+              </div>
+              <div className="space-y-4">
+                {exerciseAchievements.map((achievement: any) => (
+                  <div 
+                    key={achievement.id} 
+                    className={`border rounded-lg p-4 ${
+                      achievement.is_completed 
+                        ? 'border-blue-300 bg-blue-50' 
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center">
+                        {achievement.is_completed ? (
+                          <span className="text-2xl mr-2">🏆</span>
+                        ) : (
+                          <span className="text-2xl mr-2">🎯</span>
+                        )}
+                        <h3 className="font-semibold text-gray-900">{achievement.achievement_name}</h3>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        achievement.is_completed 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {achievement.points_reward} 积分
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-3">{achievement.achievement_description}</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>进度</span>
+                        <span>
+                          {/* 对于距离类成就，显示公里 */}
+                          {achievement.target_value >= 1000 && achievement.achievement_id.includes('km') 
+                            ? `${(achievement.current_value / 1000).toFixed(1)} / ${(achievement.target_value / 1000).toFixed(0)} km`
+                            : `${achievement.current_value} / ${achievement.target_value}`
+                          }
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-500 ${
+                            achievement.is_completed ? 'bg-blue-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${Math.min(100, achievement.progress_percentage)}%` }}
                         ></div>
                       </div>
                     </div>

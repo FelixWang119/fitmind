@@ -117,6 +117,28 @@ def create_exercise_checkin(
     except Exception as e:
         logger.error(f"添加运动打卡到短期记忆失败: {e}")
 
+    # ===== Story 4.2: 更新运动成就 =====
+    try:
+        from app.services.gamification_service import get_gamification_service
+
+        gamification_service = get_gamification_service(db)
+
+        # 处理运动成就
+        duration_minutes = db_checkin.duration_minutes or 0
+        distance_meters = int((db_checkin.distance_km or 0) * 1000)  # 转换为米
+
+        gamification_service.process_exercise_checkin_achievements(
+            user=current_user,
+            exercise_type=db_checkin.exercise_type,
+            duration_minutes=duration_minutes,
+            distance_meters=distance_meters,
+        )
+
+        logger.info("Exercise achievements updated", user_id=current_user.id)
+    except Exception as e:
+        logger.error(f"更新运动成就失败：{e}")
+        # 不阻塞运动打卡流程
+
     # 构建响应 (包含估算详情)
     response = ExerciseCheckInResponse.model_validate(db_checkin)
     response.estimation_details = calorie_result["estimation_details"]

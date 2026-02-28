@@ -84,9 +84,22 @@ alembic upgrade head
 
 | 配置项 | 值 |
 |--------|-----|
-| **Host** | `localhost` |
+| **Host** | `localhost` (或 `127.0.0.1`) |
 | **Port** | `5432` |
 | **Database** | `weight_ai_db` |
+| **User** | `weight_ai_user` |
+| **Password** | `weight_ai_password` |
+| **数据目录** | `/Users/felix/pgsql_data` |
+
+### 连接字符串
+
+```bash
+# 标准连接
+postgresql://weight_ai_user:weight_ai_password@127.0.0.1:5432/weight_ai_db
+
+# 环境变量 (.env)
+DATABASE_URL=postgresql://weight_ai_user:weight_ai_password@127.0.0.1:5432/weight_ai_db
+```
 | **User** | `weight_ai_user` |
 | **Password** | `weight_ai_password` |
 | **连接字符串** | `postgresql://weight_ai_user:weight_ai_password@localhost:5432/weight_ai_db` |

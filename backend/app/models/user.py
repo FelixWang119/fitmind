@@ -1,4 +1,5 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, Float
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -28,6 +29,21 @@ class User(Base):
         String(50)
     )  # sedentary, light, moderate, active, very_active
     dietary_preferences = Column(Text)  # JSON字符串存储饮食偏好
+
+    # 用户信息扩展 - 新增 11 字段 (Story 1.1)
+    current_weight = Column(Integer, comment="当前体重 (单位：克)")  # 当前体重，克
+    waist_circumference = Column(Integer, comment="腰围 (单位：厘米)")  # 腰围，厘米
+    hip_circumference = Column(Integer, comment="臀围 (单位：厘米)")  # 臀围，厘米
+    body_fat_percentage = Column(Float, comment="体脂率 (单位：百分比)")  # 体脂率，%
+    muscle_mass = Column(Integer, comment="肌肉量 (单位：克)")  # 肌肉量，克
+    bone_density = Column(Float, comment="骨密度 (单位：克/平方厘米)")  # 骨密度，g/cm²
+    metabolism_rate = Column(
+        Integer, comment="基础代谢率 (单位：kcal/day)"
+    )  # 基础代谢率，kcal/day
+    health_conditions = Column(JSON, comment="健康状况 (JSON 格式)")  # 健康状况
+    medications = Column(JSON, comment="用药情况 (JSON 格式)")  # 用药情况
+    allergies = Column(JSON, comment="过敏信息 (JSON 格式)")  # 过敏信息
+    sleep_quality = Column(Integer, comment="睡眠质量 (1-10 分)")  # 睡眠质量，1-10
 
     # 时间戳
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -80,6 +96,11 @@ class User(Base):
     )
     exercise_checkins = relationship(
         "ExerciseCheckIn", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    # 目标系统关系 (Story 1.6)
+    goals = relationship(
+        "UserGoal", back_populates="user", cascade="all, delete-orphan"
     )
 
     # 通知系统关系

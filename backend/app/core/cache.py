@@ -1,4 +1,5 @@
 """缓存管理模块"""
+
 import hashlib
 import json
 import time
@@ -191,11 +192,10 @@ class CacheManager:
 
 # 常用数据缓存TTL配置
 CACHE_TTL_CONFIG = {
-    "user_profile": 600,  # 10分钟
-    "dashboard": 300,  # 5分钟
-    "nutrition": 600,  # 10分钟
-    "habits": 300,  # 5分钟
-    "emotional": 300,  # 5分钟
-    "scientific_report": 1800,  # 30分钟
-    "leaderboard": 3600,  # 1小时
+    "user_profile": 600,  # 10 分钟
+    "dashboard": 300,  # 5 分钟
+    "nutrition": 600,  # 10 分钟
+    "habits": 300,  # 5 分钟
+    "scientific_report": 1800,  # 30 分钟
+    "leaderboard": 3600,  # 1 小时
 }

@@ -320,6 +320,32 @@ async def create_meal(
     except Exception as e:
         logger.error(f"添加餐食到短期记忆失败：{e}")
 
+    # ===== Story 4.1: 更新营养成就 =====
+    try:
+        from app.services.gamification_service import get_gamification_service
+
+        gamification_service = get_gamification_service(db)
+
+        # 更新饮食连续成就
+        gamification_service.check_and_update_nutrition_streak(
+            current_user, has_meal_today=True
+        )
+
+        # 更新尝试新食物成就 (如果有新食材)
+        if meal_with_items and meal_with_items.meal_items:
+            # 这里可以添加检测新食物的逻辑
+            # 简化处理：每次记录都增加进度
+            gamification_service.update_nutrition_achievement(
+                current_user,
+                "variety_explorer_10",
+                increment=len(meal_with_items.meal_items),
+            )
+
+        logger.info("Nutrition achievements updated", user_id=current_user.id)
+    except Exception as e:
+        logger.error(f"更新营养成就失败：{e}")
+        # 不阻塞餐食创建流程
+
     return meal_with_items
 
 

@@ -538,3 +538,177 @@ async def get_summaries(
             for s in summaries
         ],
     }
+
+
+# ========== Story 5.2: 增强检索端点 ==========
+
+
+@router.get("/enhanced/by-type/{memory_type}")
+async def get_memories_by_type(
+    memory_type: str,
+    user_id: int = Query(..., description="用户ID"),
+    limit: int = Query(20, ge=1, le=100),
+    include_inactive: bool = Query(False),
+    current_user_id: int = None,
+    db: Session = Depends(get_db),
+):
+    """按记忆类型获取记忆 (Story 5.2)"""
+    # 如果未提供 user_id，使用当前用户
+    if user_id == 0 and current_user_id:
+        user_id = current_user_id
+
+    from app.services.enhanced_memory_query_service import (
+        get_enhanced_memory_query_service,
+    )
+
+    service = get_enhanced_memory_query_service(db)
+    memories = service.get_memories_by_type(
+        user_id=user_id,
+        memory_type=memory_type,
+        limit=limit,
+        include_inactive=include_inactive,
+    )
+
+    return {
+        "success": True,
+        "memory_type": memory_type,
+        "count": len(memories),
+        "memories": memories,
+    }
+
+
+@router.get("/enhanced/by-timerange")
+async def get_memories_by_timerange(
+    user_id: int = Query(..., description="用户ID"),
+    start_date: str = Query(..., description="开始日期 (ISO格式)"),
+    end_date: str = Query(None, description="结束日期 (ISO格式)"),
+    memory_types: str = Query(None, description="记忆类型 (逗号分隔)"),
+    limit: int = Query(50, ge=1, le=100),
+    current_user_id: int = None,
+    db: Session = Depends(get_db),
+):
+    """按时间范围获取记忆 (Story 5.2)"""
+    if user_id == 0 and current_user_id:
+        user_id = current_user_id
+
+    from datetime import datetime
+
+    from app.services.enhanced_memory_query_service import (
+        get_enhanced_memory_query_service,
+    )
+
+    try:
+        start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+        end = (
+            datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            if end_date
+            else None
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {e}")
+
+    types = memory_types.split(",") if memory_types else None
+
+    service = get_enhanced_memory_query_service(db)
+    memories = service.get_memories_by_timerange(
+        user_id=user_id,
+        start_date=start,
+        end_date=end,
+        memory_types=types,
+        limit=limit,
+    )
+
+    return {
+        "success": True,
+        "start_date": start_date,
+        "end_date": end_date,
+        "count": len(memories),
+        "memories": memories,
+    }
+
+
+@router.get("/enhanced/importance-ranking")
+async def get_memories_by_importance(
+    user_id: int = Query(..., description="用户ID"),
+    limit: int = Query(20, ge=1, le=100),
+    memory_types: str = Query(None, description="记忆类型 (逗号分隔)"),
+    current_user_id: int = None,
+    db: Session = Depends(get_db),
+):
+    """获取按重要性排序的记忆 (Story 5.2)"""
+    if user_id == 0 and current_user_id:
+        user_id = current_user_id
+
+    from app.services.enhanced_memory_query_service import (
+        get_enhanced_memory_query_service,
+    )
+
+    types = memory_types.split(",") if memory_types else None
+
+    service = get_enhanced_memory_query_service(db)
+    memories = service.get_memories_with_importance_ranking(
+        user_id=user_id,
+        limit=limit,
+        memory_types=types,
+    )
+
+    return {
+        "success": True,
+        "count": len(memories),
+        "memories": memories,
+    }
+
+
+@router.post("/enhanced/hybrid-search")
+async def hybrid_search_memories(
+    user_id: int,
+    query: str,
+    memory_types: str = Query(None, description="记忆类型 (逗号分隔)"),
+    start_date: str = Query(None, description="开始日期"),
+    end_date: str = Query(None, description="结束日期"),
+    limit: int = Query(10, ge=1, le=50),
+    current_user_id: int = None,
+    db: Session = Depends(get_db),
+):
+    """混合搜索 (关键词 + 向量) (Story 5.2)"""
+    if user_id == 0 and current_user_id:
+        user_id = current_user_id
+
+    from datetime import datetime
+
+    from app.services.enhanced_memory_query_service import (
+        get_enhanced_memory_query_service,
+    )
+
+    filters = {}
+    if memory_types:
+        filters["memory_types"] = memory_types.split(",")
+    if start_date:
+        try:
+            filters["start_date"] = datetime.fromisoformat(
+                start_date.replace("Z", "+00:00")
+            )
+        except:
+            pass
+    if end_date:
+        try:
+            filters["end_date"] = datetime.fromisoformat(
+                end_date.replace("Z", "+00:00")
+            )
+        except:
+            pass
+
+    service = get_enhanced_memory_query_service(db)
+    results = service.hybrid_search(
+        user_id=user_id,
+        query=query,
+        filters=filters if filters else None,
+        limit=limit,
+    )
+
+    return {
+        "success": True,
+        "query": query,
+        "count": len(results),
+        "results": results,
+    }

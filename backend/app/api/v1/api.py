@@ -2,14 +2,16 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     system_config,
+    admin_auth,
     ai,
     auth,
+    calorie_balance,
     chat,
     dashboard,
-    emotional_support,
     exercises,
     exercise_checkin,
     gamification,
+    goals,
     habit,
     habits,
     habit_stats,
@@ -55,10 +57,10 @@ api_router.include_router(
 # 记忆系统端点
 api_router.include_router(memory.router, prefix="/memory", tags=["memory"])
 
-# 情感支持端点
-api_router.include_router(
-    emotional_support.router, prefix="/emotional-support", tags=["emotional-support"]
-)
+# TODO: 情感支持端点 (待实现)
+# api_router.include_router(
+#     emotional_support.router, prefix="/emotional-support", tags=["emotional-support"]
+# )
 
 # 运动记录端点
 api_router.include_router(exercises.router, prefix="/exercises", tags=["exercises"])
@@ -75,6 +77,9 @@ api_router.include_router(meals.router, prefix="/meals", tags=["meals"])
 api_router.include_router(
     meal_checkin.router, prefix="/meal-checkin", tags=["meal-checkin"]
 )
+
+# 热量平衡端点
+api_router.include_router(calorie_balance.router, prefix="", tags=["calorie-balance"])
 
 # 游戏化系统端点
 api_router.include_router(
@@ -135,5 +140,9 @@ api_router.include_router(
     user_experience.router, prefix="/user-experience", tags=["user-experience"]
 )
 
+# 目标系统端点
+api_router.include_router(goals.router, prefix="/goals", tags=["goals"])
+
 # 系统管理端点
+api_router.include_router(admin_auth.router, prefix="/admin", tags=["admin-auth"])
 api_router.include_router(system_config.router, prefix="/admin", tags=["system-config"])

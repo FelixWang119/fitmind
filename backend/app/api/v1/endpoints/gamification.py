@@ -233,9 +233,164 @@ async def get_user_achievements(
         )
 
 
+@router.get("/achievements/nutrition", response_model=List[AchievementInDB])
+async def get_nutrition_achievements(
+    completed_only: bool = Query(False, description="仅显示已完成成就"),
+    current_user: UserModel = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """获取用户营养成就 (Story 4.1)"""
+    logger.info("Getting nutrition achievements", user_id=current_user.id)
+
+    gamification_service = get_gamification_service(db)
+
+    try:
+        achievements = gamification_service.get_nutrition_achievements(
+            current_user, completed_only
+        )
+        return achievements
+
+    except Exception as e:
+        logger.error(
+            "Failed to get nutrition achievements",
+            user_id=current_user.id,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve nutrition achievements",
+        )
+
+
+@router.post("/achievements/nutrition/{achievement_id}/progress")
+async def update_nutrition_achievement_progress(
+    achievement_id: str,
+    increment: int = Query(1, description="进度增量"),
+    current_user: UserModel = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """更新营养成就进度 (Story 4.1)"""
+    logger.info(
+        "Updating nutrition achievement progress",
+        user_id=current_user.id,
+        achievement_id=achievement_id,
+        increment=increment,
+    )
+
+    gamification_service = get_gamification_service(db)
+
+    try:
+        achievement = gamification_service.update_nutrition_achievement(
+            current_user, achievement_id, increment
+        )
+
+        if not achievement:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Achievement not found: {achievement_id}",
+            )
+
+        return {
+            "achievement": achievement,
+            "message": "进度已更新" if not achievement.is_completed else "成就已完成！",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to update nutrition achievement",
+            user_id=current_user.id,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update achievement progress",
+        )
+
+
+# ========== Story 4.2: 运动成就端点 ==========
+
+
+@router.get("/achievements/exercise", response_model=List[AchievementInDB])
+async def get_exercise_achievements(
+    completed_only: bool = Query(False, description="仅显示已完成成就"),
+    current_user: UserModel = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """获取用户运动成就 (Story 4.2)"""
+    logger.info("Getting exercise achievements", user_id=current_user.id)
+
+    gamification_service = get_gamification_service(db)
+
+    try:
+        achievements = gamification_service.get_exercise_achievements(
+            current_user, completed_only
+        )
+        return achievements
+
+    except Exception as e:
+        logger.error(
+            "Failed to get exercise achievements", user_id=current_user.id, error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve exercise achievements",
+        )
+
+
+@router.post("/achievements/exercise/{achievement_id}/progress")
+async def update_exercise_achievement_progress(
+    achievement_id: str,
+    increment: int = Query(1, description="进度增量"),
+    current_user: UserModel = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """更新运动成就进度 (Story 4.2)"""
+    logger.info(
+        "Updating exercise achievement progress",
+        user_id=current_user.id,
+        achievement_id=achievement_id,
+        increment=increment,
+    )
+
+    gamification_service = get_gamification_service(db)
+
+    try:
+        achievement = gamification_service.update_exercise_achievement(
+            current_user, achievement_id, increment
+        )
+
+        if not achievement:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Achievement not found: {achievement_id}",
+            )
+
+        return {
+            "achievement": achievement,
+            "message": "进度已更新" if not achievement.is_completed else "成就已完成！",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Failed to update exercise achievement",
+            user_id=current_user.id,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update achievement progress",
+        )
+
+
 @router.get("/challenges", response_model=List[ChallengeInDB])
 async def get_user_challenges(
-    status: Optional[str] = Query(None, description="状态过滤: active, completed, failed"),
+    status: Optional[str] = Query(
+        None, description="状态过滤: active, completed, failed"
+    ),
     current_user: UserModel = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -359,7 +514,9 @@ async def claim_daily_reward(
 
 @router.get("/leaderboard")
 async def get_leaderboard(
-    type: str = Query("points", description="排行榜类型: points, achievements, streaks"),
+    type: str = Query(
+        "points", description="排行榜类型: points, achievements, streaks"
+    ),
     period: str = Query("weekly", description="周期: weekly, monthly, all_time"),
     limit: int = Query(20, ge=1, le=100, description="数量限制"),
     current_user: UserModel = Depends(get_current_active_user),

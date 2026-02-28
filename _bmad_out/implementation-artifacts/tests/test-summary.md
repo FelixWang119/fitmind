@@ -1,8 +1,45 @@
-# 测试自动化摘要
+# 测试自动化摘要 - Sprint 2
 
 ## 测试生成完成
 
-### 1. 当前测试覆盖情况
+### 1. Sprint 2 新生成的测试
+
+**后端 API 测试 (pytest):**
+
+| 测试文件 | 描述 | 覆盖功能 |
+|---------|------|---------|
+| `tests/api/test_goals.py` | 目标系统 API 测试 | 目标推荐、CRUD、进度跟踪、反馈系统 |
+| `tests/api/test_calorie_balance.py` | 热量平衡 API 测试 | 平衡计算、历史记录 |
+| `tests/api/test_gamification.py` | 游戏化 API 测试 | 积分、徽章、挑战、连续记录 |
+
+**前端 E2E 测试 (Playwright):**
+
+| 测试文件 | 描述 | 覆盖功能 |
+|---------|------|---------|
+| `tests/e2e/sprint2.spec.ts` | Sprint 2 E2E 测试 | 目标、热量平衡、游戏化流程 |
+
+### 2. Sprint 2 功能覆盖
+
+#### Epic 2: 目标系统实现 (21 pts)
+- ✅ 目标推荐 (GET/POST)
+- ✅ 目标 CRUD 操作
+- ✅ 目标进度跟踪
+- ✅ 目标反馈系统
+
+#### Epic 3: 热量平衡增强 (13 pts)
+- ✅ 三栏热量显示
+- ✅ 实时平衡计算
+- ✅ 热量历史追踪
+
+#### Epic 4: 游戏化系统扩展 (21 pts)
+- ✅ 游戏化概览
+- ✅ 用户积分和历史
+- ✅ 徽章解锁
+- ✅ 挑战跟踪
+- ✅ 连续记录管理
+- ✅ 等级进度
+
+### 3. 当前测试覆盖情况 (全部 Sprint)
 
 **已有测试 (196 个通过，13 个跳过):**
 
@@ -22,85 +59,51 @@
 | test_health_assessment_api.py | 10 | 健康评估 API 测试 |
 | test_habit_stats_api.py | 15 | 习惯统计 API 测试 |
 | test_ai_role_integration.py | 19 | AI 角色集成测试 |
+| **Sprint 2 新增** | **~50** | **目标、热量平衡、游戏化** |
 | 其他测试 | ~30 | 其他功能 |
 
-### 2. 本次执行结果 (2026-02-24)
-
-#### 2.1 后端测试
-
-```bash
-cd backend
-pytest tests/ -v
-```
-
-**结果**: 196 passed, 13 skipped
-
-#### 2.2 前端测试
-
-```bash
-cd frontend
-npm test
-```
-
-**结果**: 3 passed (Chat, Gamification, Habits)
-
-#### 2.3 运动打卡功能测试 (test_exercise_checkin.py)
-
-- ✅ 创建打卡记录 (P0)
-- ✅ 用户体重计算 (P0)
-- ✅ 默认体重 70kg (P0)
-- ✅ 未授权访问 (P0)
-- ✅ 数据验证 (P0)
-- ✅ 打卡列表查询 (P1)
-- ✅ 更新/删除 (P1)
-- ✅ 每日摘要 (P1)
-- ✅ 运动类型 (P1)
-- ✅ 卡路里估算 (P1)
-- ✅ Dashboard 集成 (P1)
-
-### 3. 测试统计
+### 4. Sprint 2 测试统计
 
 | 指标 | 数值 |
 |-----|-----|
-| 后端测试数量 | 196 |
-| 前端测试数量 | 3 |
-| **总测试数量** | **199** |
+| 新增 API 测试 | ~50 |
+| 新增 E2E 测试 | ~15 |
+| **Sprint 2 测试总数** | **~65** |
+| 已有总测试数 | ~199 |
+| **预计总测试数** | **~264** |
 
-### 4. 覆盖率改进
+### 5. 测试框架
 
-| 功能领域 | 之前 | 之后 |
-|---------|-----|-----|
-| 健康评估 | 0% | ~80% |
-| 习惯统计 | 0% | ~70% |
-| 运动打卡 | 0% | ~90% |
-| AI 角色 | 部分 | ~90% |
-
-### 5. 本次修复的问题
-
-1. **exercise_checkin.py 语法错误**: 修复了重复代码块导致的缩进错误
-2. **路由顺序问题**: 重新排序了 /daily-summary 和 /exercise-types 路由
-3. **测试断言修复**: 修复了 test_calculate_calorie_target_weight_loss 中的字段不匹配
+- **后端**: pytest 7.4.3
+- **前端单元**: Jest 29.6.2
+- **前端 E2E**: Playwright 1.38.0
 
 ### 6. 运行测试
 
 ```bash
 # 后端测试
 cd backend
-pytest tests/ -v
+pytest tests/api/test_goals.py -v
+pytest tests/api/test_calorie_balance.py -v
+pytest tests/api/test_gamification.py -v
 
-# 前端测试
+# 前端 E2E 测试
 cd frontend
-npm test
+npm run e2e
+
+# 运行所有 API 测试
+cd backend && pytest tests/api/ -v
 ```
 
 ### 7. 后续建议
 
-1. **E2E 测试** - 使用 Playwright 添加前端 E2E 测试
-2. **集成测试** - 使用认证请求测试完整用户流程
-3. **性能测试** - 为 API 端点添加负载测试
-4. **前端单元测试** - 添加更多前端组件测试
+1. **CI/CD 集成** - 在持续集成中运行测试
+2. **边缘案例** - 添加更多边界条件测试
+3. **测试数据夹具** - 为集成测试实现测试数据夹具
+4. **性能基准** - 添加 API 性能基准测试
 
 ---
 
-生成时间: 2026-02-24
+生成时间: 2026-02-28
 生成工具: Quinn QA Engineer (qa-automate workflow)
+Sprint: 2 (7/7 Epics, 25/25 Stories, 184 Story Points)

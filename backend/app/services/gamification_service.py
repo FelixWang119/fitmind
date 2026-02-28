@@ -315,6 +315,152 @@ class GamificationService:
                 "target_value": 15,
                 "points_reward": 150,
             },
+            # 营养成就 (Story 4.1)
+            {
+                "achievement_id": "nutrition_streak_7",
+                "achievement_name": "饮食记录达人",
+                "achievement_description": "连续7天记录饮食",
+                "achievement_category": "nutrition",
+                "target_value": 7,
+                "points_reward": 100,
+            },
+            {
+                "achievement_id": "nutrition_streak_30",
+                "achievement_name": "营养追踪专家",
+                "achievement_description": "连续30天记录饮食",
+                "achievement_category": "nutrition",
+                "target_value": 30,
+                "points_reward": 500,
+            },
+            {
+                "achievement_id": "calorie_goal_met_10",
+                "achievement_name": "热量控制者",
+                "achievement_description": "达成热量目标10次",
+                "achievement_category": "nutrition",
+                "target_value": 10,
+                "points_reward": 150,
+            },
+            {
+                "achievement_id": "calorie_goal_met_50",
+                "achievement_name": "热量管理大师",
+                "achievement_description": "达成热量目标50次",
+                "achievement_category": "nutrition",
+                "target_value": 50,
+                "points_reward": 500,
+            },
+            {
+                "achievement_id": "macro_balance_7",
+                "achievement_name": "营养均衡师",
+                "achievement_description": "7天营养均衡达标",
+                "achievement_category": "nutrition",
+                "target_value": 7,
+                "points_reward": 200,
+            },
+            {
+                "achievement_id": "variety_explorer_10",
+                "achievement_name": "美食探险家",
+                "achievement_description": "尝试10种新食物",
+                "achievement_category": "nutrition",
+                "target_value": 10,
+                "points_reward": 100,
+            },
+            {
+                "achievement_id": "variety_explorer_30",
+                "achievement_name": "饮食多样化达人",
+                "achievement_description": "尝试30种新食物",
+                "achievement_category": "nutrition",
+                "target_value": 30,
+                "points_reward": 300,
+            },
+            # 运动成就 (Story 4.2)
+            {
+                "achievement_id": "exercise_streak_7",
+                "achievement_name": "运动达人",
+                "achievement_description": "连续7天运动",
+                "achievement_category": "exercise",
+                "target_value": 7,
+                "points_reward": 100,
+            },
+            {
+                "achievement_id": "exercise_streak_30",
+                "achievement_name": "运动冠军",
+                "achievement_description": "连续30天运动",
+                "achievement_category": "exercise",
+                "target_value": 30,
+                "points_reward": 500,
+            },
+            {
+                "achievement_id": "cardio_10_hours",
+                "achievement_name": "有氧达人",
+                "achievement_description": "累计有氧运动10小时",
+                "achievement_category": "exercise",
+                "target_value": 600,  # 10小时 = 600分钟
+                "points_reward": 150,
+            },
+            {
+                "achievement_id": "cardio_50_hours",
+                "achievement_name": "有氧大师",
+                "achievement_description": "累计有氧运动50小时",
+                "achievement_category": "exercise",
+                "target_value": 3000,  # 50小时 = 3000分钟
+                "points_reward": 500,
+            },
+            {
+                "achievement_id": "strength_10_sessions",
+                "achievement_name": "力量入门",
+                "achievement_description": "完成10次力量训练",
+                "achievement_category": "exercise",
+                "target_value": 10,
+                "points_reward": 100,
+            },
+            {
+                "achievement_id": "strength_50_sessions",
+                "achievement_name": "力量训练师",
+                "achievement_description": "完成50次力量训练",
+                "achievement_category": "exercise",
+                "target_value": 50,
+                "points_reward": 300,
+            },
+            {
+                "achievement_id": "total_100km",
+                "achievement_name": "百里挑一",
+                "achievement_description": "累计跑步100公里",
+                "achievement_category": "exercise",
+                "target_value": 100000,  # 米
+                "points_reward": 500,
+            },
+            {
+                "achievement_id": "total_500km",
+                "achievement_name": "跑步达人",
+                "achievement_description": "累计跑步500公里",
+                "achievement_category": "exercise",
+                "target_value": 500000,  # 米
+                "points_reward": 1000,
+            },
+            {
+                "achievement_id": "total_1000_mins",
+                "achievement_name": "运动时长达人",
+                "achievement_description": "累计运动1000分钟",
+                "achievement_category": "exercise",
+                "target_value": 1000,
+                "points_reward": 300,
+            },
+            {
+                "achievement_id": "exercise_types_3",
+                "achievement_name": "全能运动者",
+                "achievement_description": "尝试3种不同运动类型",
+                "achievement_category": "exercise",
+                "target_value": 3,
+                "points_reward": 150,
+            },
+            {
+                "achievement_id": "exercise_types_5",
+                "achievement_name": "运动探险家",
+                "achievement_description": "尝试5种不同运动类型",
+                "achievement_category": "exercise",
+                "target_value": 5,
+                "points_reward": 300,
+            },
         ]
 
         for achievement_data in default_achievements:
@@ -1019,6 +1165,276 @@ class GamificationService:
             )
             for a in achievements
         ]
+
+    # ========== 营养成就系统 (Story 4.1) ==========
+
+    def get_nutrition_achievements(
+        self, user: User, completed_only: bool = False
+    ) -> List[AchievementInDB]:
+        """获取用户营养成就"""
+        query = self.db.query(Achievement).filter(
+            Achievement.user_id == user.id,
+            Achievement.achievement_category == "nutrition",
+        )
+
+        if completed_only:
+            query = query.filter(Achievement.is_completed == True)
+
+        achievements = query.order_by(Achievement.created_at.desc()).all()
+
+        return [
+            AchievementInDB(
+                id=a.id,
+                user_id=a.user_id,
+                achievement_id=a.achievement_id,
+                achievement_name=a.achievement_name,
+                achievement_description=a.achievement_description,
+                achievement_category=a.achievement_category,
+                target_value=a.target_value,
+                current_value=a.current_value,
+                progress_percentage=a.progress_percentage,
+                is_completed=a.is_completed,
+                completed_at=a.completed_at,
+                points_reward=a.points_reward,
+                badge_reward=a.badge_reward,
+                created_at=a.created_at,
+                updated_at=a.updated_at,
+            )
+            for a in achievements
+        ]
+
+    def update_nutrition_achievement(
+        self, user: User, achievement_id: str, increment: int = 1
+    ) -> Optional[AchievementInDB]:
+        """更新营养成就进度"""
+        achievement = (
+            self.db.query(Achievement)
+            .filter(
+                Achievement.user_id == user.id,
+                Achievement.achievement_id == achievement_id,
+            )
+            .first()
+        )
+
+        if not achievement or achievement.is_completed:
+            return None
+
+        # 更新进度
+        achievement.current_value += increment
+        achievement.progress_percentage = min(
+            100.0, (achievement.current_value / achievement.target_value) * 100
+        )
+
+        # 检查是否完成
+        if achievement.current_value >= achievement.target_value:
+            achievement.is_completed = True
+            achievement.completed_at = datetime.utcnow()
+
+            # 发放积分奖励
+            self.award_points(
+                user=user,
+                points=achievement.points_reward,
+                transaction_type="achievement_nutrition",
+                description=f"完成成就: {achievement.achievement_name}",
+                reference_id=achievement.achievement_id,
+                reference_type="achievement",
+            )
+
+            logger.info(
+                "Nutrition achievement completed",
+                user_id=user.id,
+                achievement_id=achievement.achievement_id,
+                points_reward=achievement.points_reward,
+            )
+
+        self.db.commit()
+
+        return AchievementInDB(
+            id=achievement.id,
+            user_id=achievement.user_id,
+            achievement_id=achievement.achievement_id,
+            achievement_name=achievement.achievement_name,
+            achievement_description=achievement.achievement_description,
+            achievement_category=achievement.achievement_category,
+            target_value=achievement.target_value,
+            current_value=achievement.current_value,
+            progress_percentage=achievement.progress_percentage,
+            is_completed=achievement.is_completed,
+            completed_at=achievement.completed_at,
+            points_reward=achievement.points_reward,
+            badge_reward=achievement.badge_reward,
+            created_at=achievement.created_at,
+            updated_at=achievement.updated_at,
+        )
+
+    def check_and_update_nutrition_streak(
+        self, user: User, has_meal_today: bool
+    ) -> None:
+        """检查并更新饮食连续记录"""
+        # 查找饮食连续成就
+        streak_achievements = ["nutrition_streak_7", "nutrition_streak_30"]
+
+        for achievement_id in streak_achievements:
+            if has_meal_today:
+                self.update_nutrition_achievement(user, achievement_id)
+            # 如果今天没有记录，不减少连续天数（保持宽容）
+
+    # ========== 运动成就系统 (Story 4.2) ==========
+
+    def get_exercise_achievements(
+        self, user: User, completed_only: bool = False
+    ) -> List[AchievementInDB]:
+        """获取用户运动成就"""
+        query = self.db.query(Achievement).filter(
+            Achievement.user_id == user.id,
+            Achievement.achievement_category == "exercise",
+        )
+
+        if completed_only:
+            query = query.filter(Achievement.is_completed == True)
+
+        achievements = query.order_by(Achievement.created_at.desc()).all()
+
+        return [
+            AchievementInDB(
+                id=a.id,
+                user_id=a.user_id,
+                achievement_id=a.achievement_id,
+                achievement_name=a.achievement_name,
+                achievement_description=a.achievement_description,
+                achievement_category=a.achievement_category,
+                target_value=a.target_value,
+                current_value=a.current_value,
+                progress_percentage=a.progress_percentage,
+                is_completed=a.is_completed,
+                completed_at=a.completed_at,
+                points_reward=a.points_reward,
+                badge_reward=a.badge_reward,
+                created_at=a.created_at,
+                updated_at=a.updated_at,
+            )
+            for a in achievements
+        ]
+
+    def update_exercise_achievement(
+        self, user: User, achievement_id: str, increment: int = 1
+    ) -> Optional[AchievementInDB]:
+        """更新运动成就进度"""
+        achievement = (
+            self.db.query(Achievement)
+            .filter(
+                Achievement.user_id == user.id,
+                Achievement.achievement_id == achievement_id,
+            )
+            .first()
+        )
+
+        if not achievement or achievement.is_completed:
+            return None
+
+        # 更新进度
+        achievement.current_value += increment
+        achievement.progress_percentage = min(
+            100.0, (achievement.current_value / achievement.target_value) * 100
+        )
+
+        # 检查是否完成
+        if achievement.current_value >= achievement.target_value:
+            achievement.is_completed = True
+            achievement.completed_at = datetime.utcnow()
+
+            # 发放积分奖励
+            self.award_points(
+                user=user,
+                points=achievement.points_reward,
+                transaction_type="achievement_exercise",
+                description=f"完成成就: {achievement.achievement_name}",
+                reference_id=achievement.achievement_id,
+                reference_type="achievement",
+            )
+
+            logger.info(
+                "Exercise achievement completed",
+                user_id=user.id,
+                achievement_id=achievement.achievement_id,
+                points_reward=achievement.points_reward,
+            )
+
+        self.db.commit()
+
+        return AchievementInDB(
+            id=achievement.id,
+            user_id=achievement.user_id,
+            achievement_id=achievement.achievement_id,
+            achievement_name=achievement.achievement_name,
+            achievement_description=achievement.achievement_description,
+            achievement_category=achievement.achievement_category,
+            target_value=achievement.target_value,
+            current_value=achievement.current_value,
+            progress_percentage=achievement.progress_percentage,
+            is_completed=achievement.is_completed,
+            completed_at=achievement.completed_at,
+            points_reward=achievement.points_reward,
+            badge_reward=achievement.badge_reward,
+            created_at=achievement.created_at,
+            updated_at=achievement.updated_at,
+        )
+
+    def check_and_update_exercise_streak(
+        self, user: User, has_exercise_today: bool
+    ) -> None:
+        """检查并更新运动连续记录"""
+        streak_achievements = ["exercise_streak_7", "exercise_streak_30"]
+
+        for achievement_id in streak_achievements:
+            if has_exercise_today:
+                self.update_exercise_achievement(user, achievement_id)
+
+    def process_exercise_checkin_achievements(
+        self,
+        user: User,
+        exercise_type: str,
+        duration_minutes: int = 0,
+        distance_meters: int = 0,
+    ) -> List[AchievementInDB]:
+        """处理运动打卡后的成就检查"""
+        completed_achievements = []
+
+        # 1. 更新连续运动成就
+        self.check_and_update_exercise_streak(user, has_exercise_today=True)
+
+        # 2. 更新运动时长成就 (cardio)
+        if duration_minutes > 0:
+            # 将分钟转换为累计分钟数
+            self.update_exercise_achievement(
+                user, "cardio_10_hours", increment=duration_minutes
+            )
+            self.update_exercise_achievement(
+                user, "cardio_50_hours", increment=duration_minutes
+            )
+            self.update_exercise_achievement(
+                user, "total_1000_mins", increment=duration_minutes
+            )
+
+        # 3. 更新距离成就 (跑步)
+        if distance_meters > 0:
+            self.update_exercise_achievement(
+                user, "total_100km", increment=distance_meters
+            )
+            self.update_exercise_achievement(
+                user, "total_500km", increment=distance_meters
+            )
+
+        # 4. 更新力量训练成就
+        if exercise_type == "strength":
+            self.update_exercise_achievement(user, "strength_10_sessions")
+            self.update_exercise_achievement(user, "strength_50_sessions")
+
+        # 5. 更新运动类型多样性成就
+        # 这里简化处理，实际应该跟踪用户尝试过的运动类型
+        # 可以通过查询不同的运动类型来更新
+
+        return completed_achievements
 
     # ========== 连续记录系统 ==========
 

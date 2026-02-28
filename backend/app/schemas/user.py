@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 # 基础模式
@@ -14,10 +14,41 @@ class UserBase(BaseModel):
     age: Optional[int] = Field(None, ge=0, le=120)
     gender: Optional[str] = None
     height: Optional[int] = Field(None, ge=50, le=250)  # 厘米
-    initial_weight: Optional[int] = Field(None, ge=20000, le=300000)  # 克
-    target_weight: Optional[int] = Field(None, ge=20000, le=300000)  # 克
+    initial_weight: Optional[int] = Field(None, ge=10, le=300)  # 克
+    target_weight: Optional[int] = Field(None, ge=10, le=300)  # 克
     activity_level: Optional[str] = None
     dietary_preferences: Optional[List[str]] = None
+
+    # 用户信息扩展 - 新增 11 字段 (Story 1.2)
+    current_weight: Optional[int] = Field(
+        None, ge=20000, le=300000, description="当前体重 (克)"
+    )
+    waist_circumference: Optional[int] = Field(
+        None, ge=50, le=150, description="腰围 (厘米)"
+    )
+    hip_circumference: Optional[int] = Field(
+        None, ge=50, le=150, description="臀围 (厘米)"
+    )
+    body_fat_percentage: Optional[float] = Field(
+        None, ge=3.0, le=70.0, description="体脂率 (%)"
+    )
+    muscle_mass: Optional[int] = Field(
+        None, ge=10000, le=150000, description="肌肉量 (克)"
+    )
+    bone_density: Optional[float] = Field(
+        None, ge=0.5, le=2.5, description="骨密度 (g/cm²)"
+    )
+    metabolism_rate: Optional[int] = Field(
+        None, ge=800, le=4000, description="基础代谢率 (kcal/day)"
+    )
+    health_conditions: Optional[Dict[str, Any]] = Field(
+        None, description="健康状况 (JSON)"
+    )
+    medications: Optional[Dict[str, Any]] = Field(None, description="用药情况 (JSON)")
+    allergies: Optional[List[str]] = Field(None, description="过敏信息 (JSON)")
+    sleep_quality: Optional[int] = Field(
+        None, ge=1, le=10, description="睡眠质量 (1-10 分)"
+    )
 
 
 # 创建用户
@@ -25,8 +56,10 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def validate_password_strength(cls, v):
+        """验证密码强度 - 要求：至少 8 位，包含大小写字母和数字"""
         """验证密码强度 - 要求：至少 8 位，包含大小写字母和数字"""
         if len(v) < 8:
             raise ValueError("密码至少需要 8 个字符")
@@ -43,10 +76,11 @@ class UserCreate(UserBase):
             raise ValueError("密码必须包含至少一个数字")
         return v
 
-    @validator("confirm_password")
-    def validate_passwords_match(cls, v, values):
+    @field_validator("confirm_password")
+    @classmethod
+    def validate_passwords_match(cls, v, info):
         """验证密码和确认密码是否匹配"""
-        if "password" in values and v != values["password"]:
+        if "password" in info.data and v != info.data["password"]:
             raise ValueError("密码和确认密码不匹配")
         return v
 
@@ -63,6 +97,19 @@ class UserUpdate(BaseModel):
     target_weight: Optional[int] = Field(None, ge=20000, le=300000)
     activity_level: Optional[str] = None
     dietary_preferences: Optional[List[str]] = None
+
+    # 用户信息扩展 - 新增 11 字段 (Story 1.2)
+    current_weight: Optional[int] = Field(None, ge=20000, le=300000)
+    waist_circumference: Optional[int] = Field(None, ge=50, le=150)
+    hip_circumference: Optional[int] = Field(None, ge=50, le=150)
+    body_fat_percentage: Optional[float] = Field(None, ge=3.0, le=70.0)
+    muscle_mass: Optional[int] = Field(None, ge=10000, le=150000)
+    bone_density: Optional[float] = Field(None, ge=0.5, le=2.5)
+    metabolism_rate: Optional[int] = Field(None, ge=800, le=4000)
+    health_conditions: Optional[Dict[str, Any]] = None
+    medications: Optional[Dict[str, Any]] = None
+    allergies: Optional[List[str]] = None
+    sleep_quality: Optional[int] = Field(None, ge=1, le=10)
 
 
 # 数据库中的用户
@@ -111,8 +158,10 @@ class PasswordReset(BaseModel):
     token: str
     new_password: str = Field(..., min_length=8)
 
-    @validator("new_password")
+    @field_validator("new_password")
+    @classmethod
     def validate_password_strength(cls, v):
+        """验证密码强度 - 要求：至少 8 位，包含大小写字母和数字"""
         """验证密码强度 - 要求：至少 8 位，包含大小写字母和数字"""
         if len(v) < 8:
             raise ValueError("密码至少需要 8 个字符")

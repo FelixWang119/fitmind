@@ -1,7 +1,8 @@
-# Sprint Status - BMAD Project
-# Generated: 2026-02-23
-# Project: bmad (AI-driven Weight Management System)
-# Tracking System: file-system
+# generated: 2026-02-27
+# project: 体重管理 AI 助手 - 优化项目
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad_out/implementation-artifacts/stories
 
 # STATUS DEFINITIONS:
 # ==================
@@ -32,81 +33,82 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: "2026-02-23"
-project: "bmad"
+generated: "2026-02-27"
+project: "体重管理 AI 助手 - 优化项目 (Brownfield)"
 project_key: "NOKEY"
 tracking_system: "file-system"
-story_location: "_bmad_out/implementation-artifacts"
+story_location: "_bmad_out/implementation-artifacts/stories"
 
 development_status:
-  # Epic 1: 用户入门与账户管理 (8 stories)
+  # ========== Epic 1: 个人档案扩展与 Onboarding 优化 (50 pts) ==========
   epic-1: done
-  1-0-project-initialization: done
-  1-1-user-registration: done
-  1-2-user-login: done
-  1-3-user-profile: done
-  1-4-password-reset: done
-  1-5-dashboard: done
-  1-6-responsive-design: done
-  1-7-database-models: done
-  epic-1-retrospective: done
+  1-1-database-model-extension: done
+  1-2-schema-update: done
+  1-3-api-endpoint-update: done
+  1-4-onboarding-ui-ux: done
+  1-5-anti-annoyance-design: done
+  1-6-goal-data-models: done
+  epic-1-retrospective: optional
 
-  # Epic 2: 核心AI对话系统 (5 stories) - Partially Done
+  # ========== Epic 2: 目标系统实现 (21 pts) ==========
   epic-2: done
-  2-1-basic-ai-chat: done
-  2-2-nutritionist-chat: done
-  2-3-behavior-coach-chat: done
-  2-4-emotional-companion-chat: done
-  2-5-dynamic-role-switching: done
+  2-1-goal-data-model-design: done
+  2-2-goal-creation-tracking: done
+  2-3-ai-feedback-strategy: done
   epic-2-retrospective: optional
 
-  # Epic 3: 健康数据记录与分析 (5 stories)
+  # ========== Epic 3: 热量平衡集成增强 (13 pts) ==========
   epic-3: done
-  3-1-weight-tracking: done
-  3-2-diet-logging: done
-  3-3-exercise-logging: done  # 2026-02-24: 代码审查完成，所有问题已修复，测试通过
-  3-4-sleep-logging: done
-  3-5-health-report: done
-  epic-3-retrospective: done
+  3-1-three-column-display: done
+  3-2-real-time-update: done
+  epic-3-retrospective: optional
 
-  # Epic 4: 行为习惯养成与情感支持 (5 stories)
+  # ========== Epic 4: 成就系统扩展 (21 pts) ==========
   epic-4: done
-  4-1-habit-checkin: done
-  4-2-habit-progress: done
-  4-3-emotional-support: done
-  4-4-positive-affirmations: done
-  4-5-crisis-support: done
-  epic-4-retrospective: done
+  4-1-nutrition-achievements: done
+  4-2-exercise-achievements-extension: done
+  epic-4-retrospective: optional
 
-  # Epic 5: 高级功能与激励系统 (7 stories)
+  # ========== Epic 5: AI 记忆集成 (18 pts) ==========
   epic-5: done
-  5-1-3d-assessment: done
-  5-2-dynamic-role-fusion: done
-  5-3-points-levels: done
-  5-4-badges-achievements: done
-  5-5-challenge-tasks: done
-  5-6-scientific-visualization: done
-  5-7-health-scoring: done
-  epic-5-retrospective: done
+  5-1-profile-data-to-memory: done
+  5-2-memory-retrieval-enhancement: done
+  5-3-ai-conversation-reference: done
+  epic-5-retrospective: optional
 
-  # Epic 6: 智能健康评估与建议系统 (4 stories) - Done
+  # ========== Epic 6: 数据模型扩展与迁移 (21 pts) ==========
   epic-6: done
-  6-1-health-assessment: done
-  6-2-health-trends: backlog
-  6-3-personalized-advice: backlog
-  6-4-data-visualization: backlog
+  6-1-migration-strategy: done
+  6-2-migration-scripts: done
   epic-6-retrospective: optional
+
+  # ========== Epic 7: 系统管理后台 (40 pts) ==========
+  epic-7: done
+  7-1-admin-framework: done
+  7-2-feature-flag-management: done
+  7-3-prompt-template-management: done
+  7-4-notification-template-management: done
+  7-5-system-config-management: done
+  7-6-business-rule-management: done
+  7-7-config-audit-log: done
+  epic-7-retrospective: optional
 
 # Sprint Summary
 sprint_summary:
-  total_epics: 6
-  total_stories: 30
-  completed_stories: 30
+  total_epics: 7
+  total_stories: 25
+  total_story_points: 184
+  
+  completed_stories: 25
+  ready_for_dev: 0
+  in_progress: 0
+  review: 0
+  backlog: 0
   completion_percentage: 100
   
   # Epic Status Breakdown
   epic_status:
-    done: 6
+    done: 7
     in_progress: 0
     backlog: 0
   
@@ -114,95 +116,200 @@ sprint_summary:
   story_status:
     done: 25
     in_progress: 0
-    ready_for_dev: 1
-    backlog: 4
+    ready_for_dev: 0
+    backlog: 0
 
-# Progress by Epic
-epic_progress:
-  - epic_id: "epic-1"
-    title: "用户入门与账户管理"
-    status: "done"
-    stories_total: 8
-    stories_completed: 8
-    progress: 100%
-    
-  - epic_id: "epic-2"
-    title: "核心AI对话系统"
-    status: "in-progress"
-    stories_total: 5
-    stories_completed: 3
-    progress: 60%
-    remaining:
-      - "2.4 情感陪伴角色对话"
-      - "2.5 动态角色切换"
-    
-  - epic_id: "epic-3"
-    title: "健康数据记录与分析"
-    status: "done"
-    stories_total: 5
-    stories_completed: 5
-    progress: 100%
-    
-  - epic_id: "epic-4"
-    title: "行为习惯养成与情感支持"
-    status: "done"
-    stories_total: 5
-    stories_completed: 3
-    progress: 60%
-    remaining:
-      - "4.1 习惯打卡系统"
-      - "4.2 习惯进度追踪"
-    
-  - epic_id: "epic-5"
-    title: "高级功能与激励系统"
-    status: "done"
-    stories_total: 7
-    stories_completed: 7
-    progress: 100%
-    
-  - epic_id: "epic-6"
-    title: "智能健康评估与建议系统"
-    status: "backlog"
-    stories_total: 4
-    stories_completed: 0
-    progress: 0%
-    notes: "Epic-6 是新增的健康评估系统，当前处于规划阶段"
+# Priority Distribution
+priority_distribution:
+  p0_mvp:
+    count: 9
+    points: 56
+    stories:
+      - "1-1-database-model-extension (8 pts)"
+      - "1-2-schema-update (5 pts)"
+      - "1-3-api-endpoint-update (3 pts)"
+      - "2-1-goal-data-model-design (8 pts)"
+      - "2-2-goal-creation-tracking (8 pts)"
+      - "2-3-ai-feedback-strategy (5 pts)"
+      - "3-1-three-column-display (5 pts)"
+      - "3-2-real-time-update (8 pts)"
+      - "7-1-admin-framework (8 pts)"
+      - "7-2-feature-flag-management (8 pts)"
+  
+  p1_enhancement:
+    count: 7
+    points: 47
+    stories:
+      - "4-1-nutrition-achievements (8 pts)"
+      - "4-2-exercise-achievements-extension (13 pts)"
+      - "5-1-profile-data-to-memory (5 pts)"
+      - "5-2-memory-retrieval-enhancement (8 pts)"
+      - "5-3-ai-conversation-reference (5 pts)"
+      - "7-3-prompt-template-management (8 pts)"
+      - "7-4-notification-template-management (5 pts)"
+      - "7-5-system-config-management (5 pts)"
+  
+  p2_advanced:
+    count: 9
+    points: 81
+    stories:
+      - "1-4-onboarding-ui-ux (13 pts)"
+      - "1-5-anti-annoyance-design (8 pts)"
+      - "1-6-goal-data-models (13 pts)"
+      - "6-1-migration-strategy (13 pts)"
+      - "6-2-migration-scripts (8 pts)"
+      - "7-6-business-rule-management (5 pts)"
+      - "7-7-config-audit-log (5 pts)"
 
-# Next Sprint Priorities
-next_sprint_priorities:
-  priority_1:
-    epic: "epic-2"
-    story: "2.4 情感陪伴角色对话"
-    reason: "完成Epic-2的全部故事，实现完整的AI对话系统"
-    
-  priority_2:
-    epic: "epic-2"
-    story: "2.5 动态角色切换"
-    reason: "实现动态角色切换功能，提升用户体验"
-    
-  priority_3:
-    epic: "epic-4"
-    story: "4.1 习惯打卡系统"
-    reason: "完成Epic-4的全部功能"
-    
-  priority_4:
-    epic: "epic-4"
-    story: "4.2 习惯进度追踪"
-    reason: "完善习惯养成系统"
-    
-  priority_5:
-    epic: "epic-6"
-    story: "6.1 健康评估系统"
-    reason: "启动Epic-6健康评估系统开发"
+# Recommended Sprint Plan
+recommended_sprints:
+  sprint_0:
+    name: "Sprint 0 - 准备工作"
+    duration: "3-5 days"
+    goal: "补充验收标准、数据迁移脚本准备、开发环境准备"
+    stories: []
+    total_points: 0
+    notes: "为正式开发做准备，不分配具体开发任务"
 
-# Technical Debt & Notes
-technical_notes:
-  - "所有已完成的Epic均已通过代码审查"
-  - "Epic-2 (AI对话系统) 需要完成剩余2个故事才能标记为done"
-  - "Epic-4 缺少习惯打卡和进度追踪的前端实现"
-  - "Epic-6 待开发，需要根据业务需求进一步细化"
+  sprint_1:
+    name: "Sprint 1 - P0 核心功能 (上)"
+    duration: "2 weeks"
+    goal: "个人档案扩展 + 目标系统基础"
+    stories:
+      - "1-1-database-model-extension"
+      - "1-2-schema-update"
+      - "1-3-api-endpoint-update"
+      - "2-1-goal-data-model-design"
+    total_points: 24
+    dependencies: "无（可并行开发）"
 
-# Workflow References
+  sprint_2:
+    name: "Sprint 2 - P0 核心功能 (下)"
+    duration: "2 weeks"
+    goal: "目标系统完成 + 热量平衡 + 管理后台基础"
+    stories:
+      - "2-2-goal-creation-tracking"
+      - "2-3-ai-feedback-strategy"
+      - "3-1-three-column-display"
+      - "3-2-real-time-update"
+      - "7-1-admin-framework"
+    total_points: 34
+    dependencies: "依赖 Sprint 1 的数据模型"
+
+  sprint_3:
+    name: "Sprint 3 - P1 增强功能 + 管理后台"
+    duration: "2 weeks"
+    goal: "成就系统 + AI 记忆集成 + 管理后台"
+    stories:
+      - "4-1-nutrition-achievements"
+      - "5-1-profile-data-to-memory"
+      - "5-2-memory-retrieval-enhancement"
+      - "7-2-feature-flag-management"
+      - "7-3-prompt-template-management"
+    total_points: 37
+    dependencies: "依赖 Sprint 1-2 的核心功能"
+
+  sprint_4:
+    name: "Sprint 4 - P2 进阶功能 + 数据迁移"
+    duration: "2 weeks"
+    goal: "Onboarding 流程 + 数据迁移 + 管理后台完善"
+    stories:
+      - "1-4-onboarding-ui-ux"
+      - "1-5-anti-annoyance-design"
+      - "6-1-migration-strategy"
+      - "6-2-migration-scripts"
+      - "7-4-notification-template-management"
+    total_points: 47
+    dependencies: "依赖所有 P0/P1 功能完成"
+
+  sprint_5:
+    name: "Sprint 5 - 收尾与优化"
+    duration: "2 weeks"
+    goal: "剩余功能 + 性能优化 + 测试完善"
+    stories:
+      - "1-6-goal-data-models"
+      - "4-2-exercise-achievements-extension"
+      - "5-3-ai-conversation-reference"
+      - "7-5-system-config-management"
+      - "7-6-business-rule-management"
+      - "7-7-config-audit-log"
+    total_points: 41
+    dependencies: "依赖 Sprint 1-4 的完成"
+
+# Technical Debt & Risk Tracking
+technical_risks:
+  - risk_id: "R1"
+    description: "数据库迁移失败导致数据丢失"
+    probability: "Low"
+    impact: "High"
+    mitigation: "备份 + 回滚脚本 + 分阶段测试"
+    related_stories: ["6-1-migration-strategy", "6-2-migration-scripts"]
+
+  - risk_id: "R2"
+    description: "AI 推荐算法不准确"
+    probability: "Medium"
+    impact: "Medium"
+    mitigation: "单元测试覆盖所有场景 + A/B 测试"
+    related_stories: ["2-1-goal-data-model-design", "2-3-ai-feedback-strategy"]
+
+  - risk_id: "R3"
+    description: "实时计算性能问题"
+    probability: "Medium"
+    impact: "Medium"
+    mitigation: "缓存机制 + 数据库索引优化"
+    related_stories: ["3-2-real-time-update"]
+
+  - risk_id: "R4"
+    description: "并发更新数据不一致"
+    probability: "Medium"
+    impact: "Medium"
+    mitigation: "事务处理 + 悲观锁/乐观锁"
+    related_stories: ["3-2-real-time-update"]
+
+  - risk_id: "R5"
+    description: "语义搜索性能问题"
+    probability: "Medium"
+    impact: "Medium"
+    mitigation: "向量索引 + 缓存 + 限制返回数量"
+    related_stories: ["5-2-memory-retrieval-enhancement"]
+
+  - risk_id: "R6"
+    description: "生产环境配置变更安全风险"
+    probability: "Low"
+    impact: "High"
+    mitigation: "双人确认流程 + 审计日志"
+    related_stories: ["7-2-feature-flag-management", "7-7-config-audit-log"]
+
+# Next Steps
+next_steps:
+  - step: 1
+    action: "开始 Epic 7: 系统管理后台"
+    owner: "Felix"
+    timeline: "立即"
+    stories:
+      - "7-1-admin-framework (8 pts)"
+      - "7-2-feature-flag-management (8 pts)"
+
+  - step: 2
+    action: "Story 7.1: 实现管理后台框架"
+    owner: "Developer"
+    timeline: "Story 7.1 开始"
+    command: "`dev-story 7-1-admin-framework`"
+
+  - step: 3
+    action: "Story 7.2: 实现功能开关管理"
+    owner: "Developer"
+    timeline: "Story 7.2 开始"
+    command: "`dev-story 7-2-feature-flag-management`"
+
+# IR Readiness Conditions
+ir_conditions:
+  status: "Conditional-Go"
+  condition: "Epic 7 (管理后台) 已补充到 Epic 文档"
+  valid_until: "2026-03-06"
+  notes: "管理后台 (P0 优先级) 是 MVP 可维护性的关键，必须与核心功能并行开发"
+
+# Workflow Definitions
 workflow_definitions:
   epic_workflow:
     - backlog

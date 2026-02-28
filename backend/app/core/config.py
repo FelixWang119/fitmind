@@ -18,13 +18,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # 数据库配置
+    # 数据库配置 (本地 PostgreSQL)
     DATABASE_URL: str = (
-        "postgresql://weight_ai_user:weight_ai_password@postgres:5432/weight_ai_db"
+        "postgresql://weight_ai_user:weight_ai_password@127.0.0.1:5432/weight_ai_db"
     )
 
     # SQLite配置（用于本地测试）
-    SQLITE_DATABASE_URL: str = "sqlite:///./weight_management.db"
+    SQLITE_DATABASE_URL: str = "sqlite:///./backend/weight_management.db"
 
     # CORS配置
     BACKEND_CORS_ORIGINS: List[str] = []

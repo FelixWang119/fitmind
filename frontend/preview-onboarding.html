@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>体重管理 AI 助手 - Onboarding 预览</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .ob-progress-1 { background-color: #4CAF50; }
+        .ob-progress-2 { background-color: #2196F3; }
+        .ob-progress-3 { background-color: #9C27B0; }
+        .ob-progress-4 { background-color: #FF9800; }
+        .ob-progress-5 { background-color: #E91E63; }
+        
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #10b981 50%, #e5e7eb 50%);
+            outline: none;
+        }
+        
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        
+        .range-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 8px rgba(59,130,246,0.4);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
+    <!-- Header -->
+    <div class="text-center py-8 px-4">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-xl mb-4">
+            <span class="text-4xl">🎯</span>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">体重管理 AI 助手 - 设计预览</h1>
+        <p class="text-gray-600">Onboarding 引导流程 & 目标设定界面</p>
+    </div>
+
+    <!-- Main Preview Container -->
+    <div class="max-w-2xl mx-auto px-4 pb-12">
+        
+        <!-- Onboarding Preview -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-6 border-b border-gray-100">
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-1">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                        </div>
+                        <span class="text-sm font-medium text-gray-500">Step 1 of 5</span>
+                    </div>
+                    
+                    <div class="relative">
+                        <div class="h-1 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-green-500 rounded-full" style="width: 20%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <h2 class="text-xl font-bold text-gray-800">基本信息</h2>
+                        <p class="text-gray-500 text-sm">了解您的身体数据</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-8">
+                <div class="mb-6">
+                    <div class="flex items-center mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mr-2">年龄</label>
+                        <div class="group relative flex items-center">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div class="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-48 p-2 bg-gray-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 transition-all">
+                                年龄帮助我们计算您的基础代谢率
+                            </div>
+                        </div>
+                    </div>
+                    <input type="number" value="32" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如: 32">
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex items-center mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mr-2">身高 (cm)</label>
+                        <div class="group relative flex items-center">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div class="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-48 p-2 bg-gray-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 transition-all">
+                                身高结合体重可以计算 BMI
+                            </div>
+                        </div>
+                    </div>
+                    <input type="number" value="175" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如: 175">
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex items-center mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mr-2">当前体重 (kg)</label>
+                        <div class="group relative flex items-center">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div class="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-48 p-2 bg-gray-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 transition-all">
+                                这是我们的起点，记录它是迈向改变的第一步
+                            </div>
+                        </div>
+                    </div>
+                    <input type="number" value="95.0" step="0.1" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如: 95.0">
+                </div>
+                
+                <!-- Encouragement Banner -->
+                <div class="mb-6 flex items-center p-4 bg-green-50 rounded-xl border border-green-100 animate-fade-in">
+                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                    </svg>
+                    <p class="font-medium text-green-800">很好！我们正在构建您的健康画像 📊</p>
+                </div>
+                
+                <div class="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+                    <button class="px-6 py-2 text-gray-500 font-medium">跳过</button>
+                    <button class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
+                        保存并继续
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Goal Setting Preview -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-6 border-b border-gray-100">
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-1">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                        </div>
+                        <span class="text-sm font-medium text-gray-500">Step 2 of 5</span>
+                    </div>
+                    
+                    <div class="relative">
+                        <div class="h-1 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-500 rounded-full" style="width: 40%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <h2 class="text-xl font-bold text-gray-800">目标设定</h2>
+                        <p class="text-gray-500 text-sm">AI 推荐健康范围</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-8">
+                <!-- AI Recommendation Banner -->
+                <div class="mb-8 p-5 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-2xl border border-blue-100 shadow-sm">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 rounded-lg mr-4 shadow-lg">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">AI 健康推荐</h3>
+                            <p class="text-sm text-gray-600">基于您的身体数据计算</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-sm">
+                        <div>
+                            <span class="text-gray-500 block mb-1">健康体重范围 (BMI 18.5-24)</span>
+                            <span class="font-bold text-gray-800">65.0 - 80.0 kg</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-gray-500 block mb-1">AI 推荐目标</span>
+                            <span class="font-bold text-purple-600">72.5 kg <span class="text-xs text-purple-400 ml-1">(BMI 22.5)</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weight Range Slider -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">目标体重 (kg)</h3>
+                    
+                    <div class="mb-6">
+                        <p class="text-sm text-gray-600 mb-2">
+                            您当前体重: <span class="font-semibold text-gray-800">95.0 kg</span>
+                        </p>
+                        
+                        <div class="relative pt-8 pb-4">
+                            <div class="absolute top-6 left-0 w-full h-3 bg-gray-200 rounded-full">
+                                <div class="absolute top-0 h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full opacity-80" style="left: 35%; width: 45%;"></div>
+                            </div>
+                            
+                            <input type="range" min="30" max="150" value="72.5" class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer z-10 relative range-slider">
+                            
+                            <div class="absolute top-0 w-6 h-6 bg-white border-2 border-blue-500 rounded-full shadow-lg transform -translate-x-1/2 flex items-center justify-center transition-all duration-200" style="left: 55%;">
+                                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <p class="text-3xl font-bold text-gray-800">72.5 kg</p>
+                            
+                            <div class="mt-3 p-3 rounded-lg flex items-center justify-center bg-green-50">
+                                <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="font-medium text-sm text-green-800">✅ 当前选择在健康范围内</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-blue-50 p-3 rounded-lg text-center">
+                            <p class="text-xs text-gray-500 mb-1">最低目标</p>
+                            <p class="font-semibold text-blue-600">65.0 kg</p>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded-lg text-center border-2 border-green-200">
+                            <p class="text-xs text-gray-500 mb-1">AI 推荐</p>
+                            <p class="text-xl font-bold text-green-600">72.5 kg</p>
+                            <p class="text-xs text-gray-500 mt-1">BMI 22.5</p>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg text-center">
+                            <p class="text-xs text-gray-500 mb-1">最高目标</p>
+                            <p class="font-semibold text-blue-600">80.0 kg</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Speed Selector -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">减重速度偏好</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button class="p-4 rounded-xl border-2 border-orange-500 bg-orange-50 text-orange-700 font-semibold transition-all">
+                            <div class="flex items-center justify-center mb-2">
+                                <span class="text-xl mr-2">⚡</span>
+                                <span>快速减重</span>
+                            </div>
+                            <div class="text-sm">
+                                <p>1-2 kg/周</p>
+                                <p class="text-xs text-orange-500 mt-1">预计 8-16 周</p>
+                            </div>
+                        </button>
+                        
+                        <button class="p-4 rounded-xl border-2 border-gray-200 hover:border-gray-300 transition-all">
+                            <div class="flex items-center justify-center mb-2">
+                                <span class="text-xl mr-2 text-gray-400">🌱</span>
+                                <span class="text-gray-600">缓慢减重</span>
+                            </div>
+                            <div class="text-sm">
+                                <p class="text-gray-600">0.5-1 kg/周</p>
+                                <p class="text-xs text-gray-500 mt-1">预计 16-32 周</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Date Selector -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">目标完成日期</h3>
+                    <input type="date" value="2026-05-15" class="w-full px-4 py-3 text-xl rounded-xl border-2 border-green-500 focus:ring-4 focus:ring-green-100 outline-none">
+                    
+                    <div class="mt-3 p-3 bg-green-50 rounded-lg flex items-center">
+                        <svg class="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-sm font-semibold text-green-800">您的时间安排合理 ✅</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+                    <button class="px-6 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                        返回上一步
+                    </button>
+                    <button class="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transform transition-all">
+                        保存并继续
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6">
+            <p class="text-xs text-gray-500">
+                ⏱️ 预计完成时间: 5-8 分钟 | 🔒 所有数据加密存储
+            </p>
+        </div>
+
+    </div>
+</body>
+</html>

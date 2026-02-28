@@ -292,22 +292,6 @@ class ApiClient {
     return response.data;
   }
 
-  // Emotional Support
-  async getEmotionalCheckIn() {
-    const response = await this.client.get('/emotional-support/check-in');
-    return response.data;
-  }
-
-  async recordEmotionalState(data: any) {
-    const response = await this.client.post('/emotional-support/emotional-states', data);
-    return response.data;
-  }
-
-  async getStressTrend(days: number = 7) {
-    const response = await this.client.get('/emotional-support/stress-trend', { params: { days } });
-    return response.data;
-  }
-
   // Gamification
   async getGamificationOverview() {
     const response = await this.client.get('/gamification/overview');
@@ -352,6 +336,22 @@ class ApiClient {
 
   async getUserAchievements(completedOnly: boolean = false) {
     const response = await this.client.get('/gamification/achievements', {
+      params: { completed_only: completedOnly },
+    });
+    return response.data;
+  }
+
+  // Story 4.1: 营养成就
+  async getNutritionAchievements(completedOnly: boolean = false) {
+    const response = await this.client.get('/gamification/achievements/nutrition', {
+      params: { completed_only: completedOnly },
+    });
+    return response.data;
+  }
+
+  // Story 4.2: 运动成就
+  async getExerciseAchievements(completedOnly: boolean = false) {
+    const response = await this.client.get('/gamification/achievements/exercise', {
       params: { completed_only: completedOnly },
     });
     return response.data;

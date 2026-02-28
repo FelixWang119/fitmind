@@ -16,7 +16,6 @@ import Nutrition from './pages/Nutrition';
 import DietTracking from './pages/DietTracking';
 import HealthTracker from './pages/HealthTracker';
 import HealthAssessment from './pages/HealthAssessment';
-import { EmotionalSupportChat } from './pages/EmotionalSupportChat';
 import Gamification from './pages/Gamification';
 import { Chat } from './pages/Chat';
 import Profile from './pages/Profile';
@@ -119,15 +118,6 @@ function App() {
         element={
           <Layout>
             <HealthAssessment />
-          </Layout>
-        }
-      />
-      
-      <Route
-        path="/emotional"
-        element={
-          <Layout>
-            <EmotionalSupportChat />
           </Layout>
         }
       />

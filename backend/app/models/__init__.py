@@ -4,14 +4,6 @@ from app.models.habit import Habit, HabitCategory, HabitCompletion, HabitFrequen
 from app.models.health_record import HealthRecord
 from app.models.health_assessment import HealthAssessment
 from app.models.user import User
-from app.models.emotional_support import (
-    EmotionalSupport,
-    EmotionalState,
-    StressLevel,
-    GratitudeJournal,
-    PositiveAffirmation,
-    MindfulnessExercise,
-)
 from app.models.memory import (
     UserLongTermMemory,
     HabitPattern,
@@ -53,12 +45,6 @@ __all__ = [
     "HabitCompletion",
     "HabitFrequency",
     "HabitCategory",
-    "EmotionalSupport",
-    "EmotionalState",
-    "StressLevel",
-    "GratitudeJournal",
-    "PositiveAffirmation",
-    "MindfulnessExercise",
     "UserLongTermMemory",
     "HabitPattern",
     "ContextSummary",
