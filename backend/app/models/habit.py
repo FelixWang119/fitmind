@@ -27,12 +27,12 @@ class HabitFrequency(enum.Enum):
 class HabitCategory(enum.Enum):
     """习惯类别枚举"""
 
-    DIET = "diet"
-    EXERCISE = "exercise"
-    SLEEP = "sleep"
-    MENTAL_HEALTH = "mental_health"
-    HYDRATION = "hydration"
-    OTHER = "other"
+    DIET = "DIET"
+    EXERCISE = "EXERCISE"
+    SLEEP = "SLEEP"
+    MENTAL_HEALTH = "MENTAL_HEALTH"
+    HYDRATION = "HYDRATION"
+    OTHER = "OTHER"
 
 
 class Habit(Base):

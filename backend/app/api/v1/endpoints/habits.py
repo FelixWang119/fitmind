@@ -26,6 +26,45 @@ logger = structlog.get_logger()
 
 router = APIRouter()
 
+# 默认习惯模板 - 使用枚举的 .value 属性
+DEFAULT_HABITS = [
+    {
+        "name": "每天保持热量赤字",
+        "category": HabitCategory.DIET.value,
+        "description": "控制饮食，保持热量赤字",
+        "target_value": 500,
+        "target_unit": "kcal",
+    },
+    {
+        "name": "每天 8 杯水",
+        "category": HabitCategory.HYDRATION.value,
+        "description": "保持身体水分平衡",
+        "target_value": 8,
+        "target_unit": "cups",
+    },
+    {
+        "name": "每天记录体重",
+        "category": HabitCategory.OTHER.value,
+        "description": "追踪体重变化",
+        "target_value": 1,
+        "target_unit": "times",
+    },
+    {
+        "name": "每日早睡",
+        "category": HabitCategory.SLEEP.value,
+        "description": "保证充足睡眠",
+        "target_value": 22,
+        "target_unit": "hour",
+    },
+    {
+        "name": "每日冥想",
+        "category": HabitCategory.MENTAL_HEALTH.value,
+        "description": "减轻压力，提高专注力",
+        "target_value": 10,
+        "target_unit": "minutes",
+    },
+]
+
 
 @router.get("/", response_model=List[HabitInDB])
 async def get_habits(
@@ -88,7 +127,11 @@ async def get_daily_habit_checklist(
         )
 
     return DailyHabitChecklist(
-        target_date=target_date, items=checklist_items, total=len(checklist_items)
+        date=target_date,
+        habits=checklist_items,
+        completed_count=0,
+        total_count=len(checklist_items),
+        completion_percentage=0.0,
     )
 
 
@@ -296,6 +339,10 @@ async def complete_habit(
     )
 
     db.add(completion)
+
+    # 更新习惯统计
+    habit.streak_days += 1
+    habit.total_completions += 1
     db.commit()
     db.refresh(completion)
 

@@ -7,7 +7,16 @@ import Layout from './components/layout/Layout';
 
 // Pages
 import Auth from './pages/Auth';
+import Onboarding from './pages/Onboarding';
 import DashboardSimple from './pages/DashboardSimple';
+import DashboardV2 from './pages/DashboardV2';
+import WaterTracker from './pages/WaterTracker';
+import WeightTracker from './pages/WeightTracker';
+import SleepTracker from './pages/SleepTracker';
+import MeditationTracker from './pages/MeditationTracker';
+import HabitManagement from './pages/HabitManagement';
+import HabitCenter from './pages/HabitCenter';
+import HabitRecords from './pages/HabitRecords';
 import Habits from './pages/Habits';
 import HabitStats from './pages/HabitStats';
 import HabitDetail from './pages/HabitDetail';
@@ -33,6 +42,15 @@ function App() {
       <Route path="/login" element={<Auth />} />
       
       <Route
+        path="/onboarding"
+        element={
+          <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50">
+            <Onboarding />
+          </div>
+        }
+      />
+      
+      <Route
         path="/"
         element={
           <Layout>
@@ -45,9 +63,57 @@ function App() {
         path="/dashboard"
         element={
           <Layout>
+            <DashboardV2 />
+          </Layout>
+        }
+      />
+      <Route
+        path="/dashboard-simple"
+        element={
+          <Layout>
             <DashboardSimple />
           </Layout>
         }
+      />
+      <Route
+        path="/dashboard-v2"
+        element={
+          <Layout>
+            <DashboardV2 />
+          </Layout>
+        }
+      />
+      <Route
+        path="/water-tracker"
+        element={<WaterTracker />}
+      />
+      <Route
+        path="/weight-tracker"
+        element={<WeightTracker />}
+      />
+      <Route
+        path="/sleep-tracker"
+        element={<SleepTracker />}
+      />
+      <Route
+        path="/meditation-tracker"
+        element={<MeditationTracker />}
+      />
+      <Route
+        path="/habit-management"
+        element={<HabitManagement />}
+      />
+      <Route
+        path="/habit-center"
+        element={
+          <Layout>
+            <HabitCenter />
+          </Layout>
+        }
+      />
+      <Route
+        path="/habit-records/:habitId"
+        element={<HabitRecords />}
       />
       
       <Route

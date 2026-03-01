@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
-  BarChart3,
   ClipboardCheck,
 } from 'lucide-react';
 
@@ -19,8 +18,7 @@ const navigation = [
   { name: '饮食记录', href: '/diet-tracking', icon: Utensils },
   { name: '运动打卡', href: '/exercise-checkin', icon: Activity },
   { name: 'AI 助手', href: '/chat', icon: MessageCircle },
-  { name: '习惯追踪', href: '/habits', icon: Target },
-  { name: '习惯分析', href: '/habits-stats', icon: BarChart3 },
+  { name: '习惯中心', href: '/habit-center', icon: Target },
   { name: '健康记录', href: '/health', icon: Activity },
   { name: '健康评估', href: '/health/assessment', icon: ClipboardCheck },
   { name: '成就中心', href: '/gamification', icon: Trophy },
