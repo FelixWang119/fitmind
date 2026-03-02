@@ -29,6 +29,7 @@ const NotificationSettingsPage = () => {
   const updateSetting = async (key: keyof NotificationSettings, value: any) => {
     if (!settings) return;
     
+    const oldSettings = { ...settings };
     const updatedSettings = { ...settings, [key]: value };
     setSettings(updatedSettings);
     
@@ -41,7 +42,7 @@ const NotificationSettingsPage = () => {
       console.error('Failed to update setting:', error);
       message.error('保存设置失败');
       // 恢复原值
-      setSettings(settings);
+      setSettings(oldSettings);
     } finally {
       setSaving(false);
     }
