@@ -22,45 +22,84 @@ jest.mock('../../services/notificationApi', () => ({
 }));
 
 // Mock Ant Design components
-jest.mock('antd', () => ({
-  Badge: ({ count, children, offset, size }: any) => (
-    <div data-testid="badge" data-count={count}>{children}</div>
-  ),
-  Drawer: ({ visible, children, title, onClose, placement, width, extra }: any) => 
-    visible ? <div data-testid="drawer">{title}{extra}{children}</div> : null,
-  Button: ({ children, onClick, type, size, icon, block, danger }: any) => (
-    <button onClick={onClick} data-type={type}>{children}</button>
-  ),
-  List: ({ dataSource, renderItem, actions }: any) => (
-    <div data-testid="list">
-      {dataSource?.map((item: any, index: number) => (
-        <div key={index} data-testid="list-item">
-          {renderItem(item)}
-        </div>
-      ))}
-    </div>
-  ),
-  Typography: { Text: ({ children }: any) => <span>{children}</span> },
-  Empty: ({ description }: any) => (
-    <div data-testid="empty">{description}</div>
-  ),
-  message: {
-    success: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    warning: jest.fn(),
-  },
-  Spin: ({ spinning, children }: any) => (
-    <div data-testid="spin" data-spinning={spinning}>{children}</div>
-  ),
-  Dropdown: ({ overlay, children, trigger }: any) => (
-    <div data-testid="dropdown">{children}{overlay}</div>
-  ),
-  Menu: ({ children }: any) => <div data-testid="menu">{children}</div>,
-  Menu_Item: ({ children, onClick, icon, disabled }: any) => (
-    <button onClick={onClick} data-testid="menu-item" disabled={disabled}>{icon}{children}</button>
-  ),
-}));
+jest.mock('antd', () => {
+  const React = require('react');
+  const MockMenuItem = ({ children, onClick, disabled }: any) => (
+    <button onClick={onClick} data-testid="menu-item" disabled={disabled}>{children}</button>
+  );
+  
+  return {
+    Badge: ({ count, children }: any) => (
+      <div data-testid="badge" data-count={count}>{children}</div>
+    ),
+    Drawer: ({ visible, children, title, extra }: any) => 
+      visible ? <div data-testid="drawer">{title}{extra}{children}</div> : null,
+    Button: ({ children, onClick, type, icon }: any) => (
+      <button onClick={onClick} data-type={type}>{icon}{children}</button>
+    ),
+    List: ({ dataSource, renderItem }: any) => (
+      <div data-testid="list">
+        {dataSource?.map((item: any, index: number) => (
+          <div key={index} data-testid="list-item">
+            {renderItem(item)}
+          </div>
+        ))}
+      </div>
+    ),
+    List_Item: ({ children, actions }: any) => (
+      <div data-testid="list-item-meta">{children}</div>
+    ),
+    List_Item_Meta: ({ title, description }: any) => (
+      <div data-testid="list-meta">
+        <div data-testid="meta-title">{title}</div>
+        <div data-testid="meta-desc">{description}</div>
+      </div>
+    ),
+    Typography: { Text: ({ children }: any) => <span>{children}</span> },
+    Empty: ({ description }: any) => (
+      <div data-testid="empty">{typeof description === 'object' ? '暂无通知' : description}</div>
+    ),
+    message: {
+      success: jest.fn(),
+      error: jest.fn(),
+      info: jest.fn(),
+      warning: jest.fn(),
+    },
+    Spin: ({ spinning, children }: any) => (
+      <div data-testid="spin" data-spinning={spinning}>{children}</div>
+    ),
+    Dropdown: ({ overlay, children }: any) => (
+      <div data-testid="dropdown">{children}</div>
+    ),
+    Menu: ({ children }: any) => <div data-testid="menu">{children}</div>,
+    MenuItem: MockMenuItem,
+    Pagination: ({ current, total, pageSize, onChange }: any) => (
+      <div data-testid="pagination" />
+    ),
+    Input: ({ placeholder, onChange, value, onSearch, allowClear }: any) => (
+      <div>
+        <input 
+          data-testid="search-input" 
+          placeholder={placeholder} 
+          onChange={onChange} 
+          value={value}
+        />
+      </div>
+    ),
+    Select: ({ value, onChange, options, style }: any) => (
+      <select 
+        data-testid="type-filter" 
+        value={value} 
+        onChange={(e: any) => onChange(e.target.value)}
+        style={style}
+      >
+        {options?.map((opt: any) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    ),
+  };
+});
 
 describe('NotificationCenter', () => {
   beforeEach(() => {
@@ -133,7 +172,7 @@ describe('NotificationCenter', () => {
     fireEvent.click(bellIcon);
     
     await waitFor(() => {
-      expect(notificationApi.getNotifications).toHaveBeenCalledWith(1, 20, false);
+      expect(notificationApi.getNotifications).toHaveBeenCalledWith(1, 20, false, undefined, undefined);
       expect(screen.getByTestId('list')).toBeInTheDocument();
     });
   });

@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Activity,
   ClipboardCheck,
+  Bell,
 } from 'lucide-react';
 
 const navigation = [
@@ -22,6 +23,7 @@ const navigation = [
   { name: '健康记录', href: '/health', icon: Activity },
   { name: '健康评估', href: '/health/assessment', icon: ClipboardCheck },
   { name: '成就中心', href: '/gamification', icon: Trophy },
+  { name: '通知设置', href: '/notification-settings', icon: Bell },
   { name: '个人资料', href: '/profile', icon: User },
 ];
 

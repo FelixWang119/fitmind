@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="7" failures="0" errors="0" time="2.031">
-  <testsuite name="Notification API Service Structure" errors="0" failures="0" skipped="0" timestamp="2026-02-25T12:15:50" time="0.891" tests="7">
-    <testcase classname="Notification API Service Structure should exist" name="Notification API Service Structure should exist" time="0.003">
+<testsuites name="jest tests" tests="7" failures="0" errors="0" time="4.761">
+  <testsuite name="Notification API Service Structure" errors="0" failures="0" skipped="0" timestamp="2026-03-02T11:05:41" time="1.811" tests="7">
+    <testcase classname="Notification API Service Structure should exist" name="Notification API Service Structure should exist" time="0.007">
     </testcase>
-    <testcase classname="Notification API Service Structure should have correct TypeScript interfaces" name="Notification API Service Structure should have correct TypeScript interfaces" time="0.01">
+    <testcase classname="Notification API Service Structure should have correct TypeScript interfaces" name="Notification API Service Structure should have correct TypeScript interfaces" time="0.001">
     </testcase>
-    <testcase classname="Notification API Service Structure should have correct API response types" name="Notification API Service Structure should have correct API response types" time="0.001">
+    <testcase classname="Notification API Service Structure should have correct API response types" name="Notification API Service Structure should have correct API response types" time="0.002">
     </testcase>
-    <testcase classname="Notification Types should support different notification types" name="Notification Types should support different notification types" time="0.002">
+    <testcase classname="Notification Types should support different notification types" name="Notification Types should support different notification types" time="0.001">
     </testcase>
     <testcase classname="Notification Types should identify important notifications" name="Notification Types should identify important notifications" time="0.001">
     </testcase>
-    <testcase classname="Notification Channels should support in_app channel" name="Notification Channels should support in_app channel" time="0">
+    <testcase classname="Notification Channels should support in_app channel" name="Notification Channels should support in_app channel" time="0.003">
     </testcase>
     <testcase classname="Notification Channels should support email channel" name="Notification Channels should support email channel" time="0">
     </testcase>

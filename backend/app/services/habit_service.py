@@ -227,6 +227,9 @@ class HabitService:
         self.db.commit()
         self.db.refresh(completion)
 
+        # 检查并发送里程碑通知
+        self._check_milestones(habit)
+
         logger.info(
             "Habit completion recorded",
             completion_id=completion.id,
@@ -235,6 +238,61 @@ class HabitService:
         )
 
         return completion
+
+    def _check_milestones(self, habit: Habit) -> None:
+        """检查并触发里程碑通知"""
+        try:
+            # 延迟导入避免循环依赖
+            from app.services.milestone_service import get_milestone_service
+
+            milestone_service = get_milestone_service(self.db)
+            achieved = milestone_service.check_and_notify_milestones(
+                habit=habit,
+                trigger_type="completion",
+            )
+
+            if achieved:
+                logger.info(
+                    "Milestones achieved",
+                    habit_id=habit.id,
+                    milestone_count=len(achieved),
+                )
+        except Exception as e:
+            # 里程碑检查不应阻止主流程
+            logger.error(
+                "Failed to check milestones",
+                habit_id=habit.id,
+                error=str(e),
+            )
+
+    def _check_goal_milestone(self, habit: Habit, goal: HabitGoal) -> None:
+        """检查并触发目标达成里程碑通知"""
+        try:
+            # 延迟导入避免循环依赖
+            from app.services.milestone_service import get_milestone_service
+
+            milestone_service = get_milestone_service(self.db)
+            achieved = milestone_service.check_and_notify_milestones(
+                habit=habit,
+                trigger_type="goal_achieved",
+                goal=goal,
+            )
+
+            if achieved:
+                logger.info(
+                    "Goal milestone achieved",
+                    habit_id=habit.id,
+                    goal_id=goal.id,
+                    milestone_count=len(achieved),
+                )
+        except Exception as e:
+            # 里程碑检查不应阻止主流程
+            logger.error(
+                "Failed to check goal milestone",
+                habit_id=habit.id,
+                goal_id=goal.id,
+                error=str(e),
+            )
 
     def _update_streak(self, habit: Habit) -> None:
         """更新连续天数"""
@@ -1320,6 +1378,18 @@ class HabitService:
 
         # Check if goal is achieved
         is_achieved = current_progress >= goal.target_value
+
+        # Check if this is a newly achieved goal (for milestone notification)
+        was_achieved = goal.is_achieved
+        goal.is_achieved = is_achieved
+
+        # Save progress to database
+        self.db.commit()
+        self.db.refresh(goal)
+
+        # Trigger milestone notification if goal was newly achieved
+        if is_achieved and not was_achieved:
+            self._check_goal_milestone(habit, goal)
 
         # Check if expired
         is_expired = today > end_date

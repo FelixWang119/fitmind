@@ -49,7 +49,122 @@ DEFAULT_TEMPLATES = [
             {"name": "habit_name", "type": "string", "description": "习惯名称"},
         ],
     },
-    # 里程碑相关
+    # 里程碑相关 - 连续打卡天数
+    {
+        "code": "milestone_streak_3",
+        "name": "连续3天打卡里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "🌟 连续3天打卡！",
+        "content_template": "恭喜你完成「{{habit_name}}」连续3天打卡，获得「初出茅庐」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    {
+        "code": "milestone_streak_7",
+        "name": "连续7天打卡里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "🔥 连续7天打卡！",
+        "content_template": "恭喜你完成「{{habit_name}}」连续7天打卡，获得「小有所成」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    {
+        "code": "milestone_streak_14",
+        "name": "连续14天打卡里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "💪 连续14天打卡！",
+        "content_template": "恭喜你完成「{{habit_name}}」连续14天打卡，获得「持之以恒」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    {
+        "code": "milestone_streak_30",
+        "name": "连续30天打卡里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "🏆 连续30天打卡！",
+        "content_template": "太棒了！你已完成「{{habit_name}}」连续30天打卡，获得「习惯养成者」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    {
+        "code": "milestone_streak_60",
+        "name": "连续60天打卡里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "🌟 连续60天打卡！",
+        "content_template": "太厉害了！你已完成「{{habit_name}}」连续60天打卡，获得「坚持不懈」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    {
+        "code": "milestone_streak_90",
+        "name": "连续90天打卡里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "💎 连续90天打卡！",
+        "content_template": "你已封神！完成「{{habit_name}}」连续90天打卡，获得「习惯大师」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    # 里程碑相关 - 累计记录
+    {
+        "code": "milestone_total_10",
+        "name": "累计10次记录里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "📝 累计10次记录！",
+        "content_template": "恭喜你在「{{habit_name}}」累计完成10次记录，获得「记录达人」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    {
+        "code": "milestone_total_50",
+        "name": "累计50次记录里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "📚 累计50次记录！",
+        "content_template": "恭喜你在「{{habit_name}}」累计完成50次记录，获得「记录高手」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    {
+        "code": "milestone_total_100",
+        "name": "累计100次记录里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "🎖️ 累计100次记录！",
+        "content_template": "太棒了！你已在「{{habit_name}}」累计完成100次记录，获得「记录大师」徽章！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "badge", "type": "string", "description": "徽章名称"},
+        ],
+    },
+    # 里程碑相关 - 目标达成
+    {
+        "code": "milestone_goal_achieved",
+        "name": "目标达成里程碑",
+        "event_type": "milestone.achieved",
+        "title_template": "🎯 目标达成！",
+        "content_template": "恭喜你达成「{{habit_name}}」{{period}}目标！",
+        "variables": [
+            {"name": "habit_name", "type": "string", "description": "习惯名称"},
+            {"name": "period", "type": "string", "description": "目标周期"},
+            {"name": "target_value", "type": "number", "description": "目标值"},
+            {"name": "current_progress", "type": "number", "description": "当前进度"},
+        ],
+    },
+    # 体重目标（保留原有）
     {
         "code": "milestone_weight_goal",
         "name": "体重目标达成",

@@ -3,6 +3,7 @@
  * 提供状态管理和数据获取逻辑
  */
 
+import React from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 

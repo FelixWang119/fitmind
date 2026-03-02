@@ -29,6 +29,7 @@ import Gamification from './pages/Gamification';
 import { Chat } from './pages/Chat';
 import Profile from './pages/Profile';
 import ExerciseCheckIn from './pages/ExerciseCheckIn';
+import NotificationSettings from './pages/NotificationSettings';
 
 function App() {
   const { checkAuth } = useAuthStore();
@@ -216,13 +217,22 @@ function App() {
        />
        
        <Route
-         path="/exercise-checkin"
-         element={
-           <Layout>
-             <ExerciseCheckIn />
-           </Layout>
-         }
-       />
+          path="/exercise-checkin"
+          element={
+            <Layout>
+              <ExerciseCheckIn />
+            </Layout>
+          }
+        />
+        
+        <Route
+          path="/notification-settings"
+          element={
+            <Layout>
+              <NotificationSettings />
+            </Layout>
+          }
+        />
        
        <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
