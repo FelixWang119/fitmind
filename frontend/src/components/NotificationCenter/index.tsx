@@ -137,6 +137,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   
   // 用于检测新通知的 ref
   const prevUnreadCountRef = useRef(0);
+  // 用于追踪已显示桌面通知的通知 ID，避免重复显示
+  const notifiedIdsRef = useRef<Set<string>>(new Set());
 
   // 获取未读数量
   const fetchUnreadCount = useCallback(async () => {
@@ -146,18 +148,23 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       
       // 检测新通知并发送浏览器通知
       if (prevUnreadCountRef.current > 0 && newUnreadCount > prevUnreadCountRef.current) {
-        // 有新通知
+        // 有新通知 - 获取最新通知并发送桌面通知
         try {
           const notificationsData = await notificationApi.getNotifications(1, 1, true);
           if (notificationsData.items.length > 0) {
             const latestNotification = notificationsData.items[0];
-            await BrowserNotificationHelper.showNotification(
-              latestNotification.title,
-              {
-                body: latestNotification.content,
-                tag: latestNotification.id,
-              }
-            );
+            // 检查是否已显示过此通知，避免重复显示
+            if (!notifiedIdsRef.current.has(latestNotification.id)) {
+              await BrowserNotificationHelper.showNotification(
+                latestNotification.title,
+                {
+                  body: latestNotification.content,
+                  tag: latestNotification.id,
+                }
+              );
+              // 记录已显示的通知 ID
+              notifiedIdsRef.current.add(latestNotification.id);
+            }
           }
         } catch (e) {
           console.error('获取最新通知失败:', e);
@@ -172,15 +179,20 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   }, []);
 
   // 获取通知列表（支持搜索和筛选）
-  const fetchNotifications = useCallback(async (page: number = 1) => {
+  // 注意：不依赖 searchKeyword/notificationType 状态，避免 handleSearch/handleTypeChange 中调用时重复触发
+  const fetchNotifications = useCallback(async (
+    page: number = 1,
+    keyword?: string,
+    type?: string
+  ) => {
     setLoading(true);
     try {
       const data = await notificationApi.getNotifications(
         page, 
         pageSize, 
         false,
-        searchKeyword || undefined,
-        notificationType || undefined
+        keyword || searchKeyword || undefined,
+        type || notificationType || undefined
       );
       setNotifications(data.items);
       setTotalCount(data.total);
@@ -192,7 +204,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [pageSize, searchKeyword, notificationType]);
+  }, [pageSize]);
 
   // 请求浏览器通知权限
   useEffect(() => {
@@ -223,16 +235,19 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   // 搜索处理
   const handleSearch = useCallback(() => {
-    setSearchKeyword(searchInput);
+    const keyword = searchInput;
+    setSearchKeyword(keyword);
     setCurrentPage(1);
-    fetchNotifications(1);
+    // 直接传递 keyword 参数，避免依赖状态更新后的闭包值
+    fetchNotifications(1, keyword);
   }, [searchInput, fetchNotifications]);
 
   // 类型筛选处理
   const handleTypeChange = useCallback((value: string) => {
     setNotificationType(value);
     setCurrentPage(1);
-    fetchNotifications(1);
+    // 直接传递 value 参数，避免依赖状态更新后的闭包值
+    fetchNotifications(1, undefined, value);
   }, [fetchNotifications]);
 
   // 标记为已读
