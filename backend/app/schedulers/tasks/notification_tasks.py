@@ -70,7 +70,7 @@ def _get_today_completion_count(db: Session, habit_id: int) -> int:
         db.query(HabitCompletion)
         .filter(
             HabitCompletion.habit_id == habit_id,
-            HabitCompletion.completion_date >= today,
+            HabitCompletion.completion_date == today,
         )
         .count()
     )
