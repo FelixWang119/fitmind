@@ -119,7 +119,9 @@ def _check_daily_limit(db: Session, user_id: int) -> bool:
     return today_count < max_per_day
 
 
-def _generate_reminder_content(habit: Habit, completed_today: bool) -> dict:
+def _generate_reminder_content(
+    habit: Habit, completed_today: bool, completed_count: int = 0
+) -> dict:
     """生成提醒内容"""
     category = habit.category.upper() if habit.category else "OTHER"
     template = HABIT_REMINDER_TEMPLATES.get(category, HABIT_REMINDER_TEMPLATES["OTHER"])
@@ -141,9 +143,11 @@ def _generate_reminder_content(habit: Habit, completed_today: bool) -> dict:
             content = f"太棒了！{habit.name}已完成！"
     else:
         # 未完成，生成提醒
+        # 计算剩余数量: 目标 - 已完成
+        remaining = max(0, (habit.target_value or 1) - completed_count)
         content = template["content"].format(
             habit_name=habit.name,
-            remaining=habit.target_value or 1,
+            remaining=remaining,
         )
 
     return {"title": title, "content": content}
@@ -204,7 +208,8 @@ async def habit_reminder_task():
                     continue
 
                 # 4. 检查今日是否已完成
-                completed_today = _get_today_completion_count(db, habit.id) > 0
+                completed_count = _get_today_completion_count(db, habit.id)
+                completed_today = completed_count > 0
                 if completed_today:
                     logger.debug(
                         f"Skipping reminder for habit {habit.id}: already completed today"
@@ -213,7 +218,9 @@ async def habit_reminder_task():
                     continue
 
                 # 5. 生成提醒内容
-                reminder_content = _generate_reminder_content(habit, completed_today)
+                reminder_content = _generate_reminder_content(
+                    habit, completed_today, completed_count
+                )
 
                 # 6. 发送通知
                 await notification_service.send_notification(
