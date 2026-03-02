@@ -8,18 +8,18 @@ import {
   Button,
   Drawer,
   List,
-  Typography,
   Empty,
   message,
   Spin,
   Dropdown,
   Menu,
+  Pagination,
 } from 'antd';
 import {
   BellOutlined,
   CheckOutlined,
   DeleteOutlined,
-  ReadingOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 import notificationApi, { Notification } from '../../services/notificationApi';
 import dayjs from 'dayjs';
@@ -41,6 +41,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
 
   // 获取未读数量
   const fetchUnreadCount = useCallback(async () => {
@@ -53,20 +55,21 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   }, []);
 
   // 获取通知列表
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (page: number = 1) => {
     setLoading(true);
     try {
-      const data = await notificationApi.getNotifications(1, 20, false);
+      const data = await notificationApi.getNotifications(page, pageSize, false);
       setNotifications(data.items);
       setTotalCount(data.total);
       setUnreadCount(data.unread_count);
+      setCurrentPage(data.page);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
       message.error('加载通知失败');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pageSize]);
 
   // 轮询未读数量（60 秒）
   useEffect(() => {
@@ -131,12 +134,18 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       
       // 更新本地状态
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      setTotalCount(prev => Math.max(0, prev - 1));
       
       message.success('已删除');
     } catch (error) {
       console.error('Failed to delete:', error);
       message.error('删除失败');
     }
+  };
+
+  // 分页变化
+  const handlePageChange = (page: number) => {
+    fetchNotifications(page);
   };
 
   // 下拉菜单
@@ -174,7 +183,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>
-              <ReadingOutlined style={{ marginRight: 8 }} />
+              <ReadOutlined style={{ marginRight: 8 }} />
               通知中心
             </span>
             {unreadCount > 0 && (
@@ -203,65 +212,79 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       >
         <Spin spinning={loading}>
           {notifications.length > 0 ? (
-            <List
-              dataSource={notifications}
-              renderItem={(notification) => (
-                <List.Item
-                  className={`notification-item ${
-                    !notification.is_read ? 'notification-unread' : ''
-                  }`}
-                  onClick={() => onNotificationClick?.(notification)}
-                  actions={[
-                    !notification.is_read && (
+            <>
+              <List
+                dataSource={notifications}
+                renderItem={(notification) => (
+                  <List.Item
+                    className={`notification-item ${
+                      !notification.is_read ? 'notification-unread' : ''
+                    }`}
+                    onClick={() => onNotificationClick?.(notification)}
+                    actions={[
+                      !notification.is_read && (
+                        <Button
+                          type="text"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkAsRead(notification.id);
+                          }}
+                          icon={<CheckOutlined />}
+                        >
+                          已读
+                        </Button>
+                      ),
                       <Button
                         type="text"
                         size="small"
+                        danger
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleMarkAsRead(notification.id);
+                          handleDelete(notification.id);
                         }}
-                        icon={<CheckOutlined />}
+                        icon={<DeleteOutlined />}
                       >
-                        已读
-                      </Button>
-                    ),
-                    <Button
-                      type="text"
-                      size="small"
-                      danger
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(notification.id);
-                      }}
-                      icon={<DeleteOutlined />}
-                    >
-                      删除
-                    </Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{notification.title}</span>
-                        {!notification.is_read && (
-                          <Badge dot color="red" />
-                        )}
-                      </div>
-                    }
-                    description={
-                      <div>
-                        <div style={{ marginBottom: 4 }}>
-                          {notification.content}
+                        删除
+                      </Button>,
+                    ]}
+                  >
+                    <List.Item.Meta
+                      title={
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{notification.title}</span>
+                          {!notification.is_read && (
+                            <Badge dot color="red" />
+                          )}
                         </div>
-                        <div style={{ fontSize: 12, color: '#999' }}>
-                          {dayjs(notification.created_at).fromNow()}
+                      }
+                      description={
+                        <div>
+                          <div style={{ marginBottom: 4 }}>
+                            {notification.content}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#999' }}>
+                            {dayjs(notification.created_at).fromNow()}
+                          </div>
                         </div>
-                      </div>
-                    }
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+              {totalCount > pageSize && (
+                <div style={{ textAlign: 'center', marginTop: 16 }}>
+                  <Pagination
+                    current={currentPage}
+                    total={totalCount}
+                    pageSize={pageSize}
+                    onChange={handlePageChange}
+                    size="small"
+                    showSizeChanger={false}
                   />
-                </List.Item>
+                </div>
               )}
-            />
+            </>
           ) : (
             <Empty description="暂无通知" />
           )}
