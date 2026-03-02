@@ -2,7 +2,7 @@
  * 通知系统 API 服务
  */
 
-import api from './api';
+import api from '../api/client';
 
 export interface Notification {
   id: string;
