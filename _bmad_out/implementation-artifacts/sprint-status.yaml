@@ -93,13 +93,22 @@ development_status:
   7-7-config-audit-log: done
   epic-7-retrospective: optional
 
+  # ========== Epic 8: 通知系统集成与打卡提醒 (34 pts) ==========
+  epic-8: done
+  8-1-notification-header-integration: done
+  8-2-habit-reminder-task: done
+  8-3-milestone-notification: done
+  8-4-notification-settings-page: done
+  8-5-notification-center-optimization: done
+  epic-8-retrospective: optional
+
 # Sprint Summary
 sprint_summary:
-  total_epics: 7
-  total_stories: 25
-  total_story_points: 184
+  total_epics: 8
+  total_stories: 30
+  total_story_points: 218
   
-  completed_stories: 25
+  completed_stories: 30
   ready_for_dev: 0
   in_progress: 0
   review: 0
@@ -108,13 +117,13 @@ sprint_summary:
   
   # Epic Status Breakdown
   epic_status:
-    done: 7
+    done: 8
     in_progress: 0
     backlog: 0
   
   # Story Status Breakdown
   story_status:
-    done: 25
+    done: 30
     in_progress: 0
     ready_for_dev: 0
     backlog: 0
