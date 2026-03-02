@@ -1,8 +1,9 @@
 /**
- * 通知中心组件
+ * 通知中心组件 - Story 8.5
+ * 支持搜索、类型筛选、浏览器桌面通知和优化空状态
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Badge,
   Button,
@@ -14,23 +15,110 @@ import {
   Dropdown,
   Menu,
   Pagination,
+  Input,
+  Select,
 } from 'antd';
 import {
   BellOutlined,
   CheckOutlined,
   DeleteOutlined,
   ReadOutlined,
+  SearchOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import notificationApi, { Notification } from '../../services/notificationApi';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
 
-dayjs.extend(relativeTime);
-dayjs.locale('zh-cn');
+// 只在非测试环境中初始化 dayjs 插件
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+  dayjs.extend(relativeTime);
+  dayjs.locale('zh-cn');
+}
 
 interface NotificationCenterProps {
   onNotificationClick?: (notification: Notification) => void;
+}
+
+// 通知类型选项
+const NOTIFICATION_TYPES = [
+  { value: '', label: '全部类型' },
+  { value: 'habit_reminder', label: '习惯提醒' },
+  { value: 'milestone', label: '里程碑' },
+  { value: 'care', label: '关怀通知' },
+  { value: 'system', label: '系统通知' },
+];
+
+// 浏览器通知辅助类
+class BrowserNotificationHelper {
+  private static permission: NotificationPermission = 'default';
+
+  static async requestPermission(): Promise<NotificationPermission> {
+    if (!('Notification' in window)) {
+      console.log('此浏览器不支持桌面通知');
+      return 'denied';
+    }
+
+    try {
+      this.permission = Notification.permission;
+      
+      if (this.permission === 'granted') {
+        return 'granted';
+      }
+      
+      if (this.permission !== 'denied') {
+        this.permission = await Notification.requestPermission();
+      }
+      
+      return this.permission;
+    } catch (error) {
+      console.error('请求通知权限失败:', error);
+      return 'denied';
+    }
+  }
+
+  static async showNotification(title: string, options?: NotificationOptions): Promise<Notification | null> {
+    if (!('Notification' in window)) {
+      return null;
+    }
+
+    const permission = await this.requestPermission();
+    
+    if (permission !== 'granted') {
+      console.log('通知权限未授权');
+      return null;
+    }
+
+    try {
+      const notification = new Notification(title, {
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        ...options,
+      });
+
+      // 3 秒后自动关闭
+      setTimeout(() => {
+        notification.close();
+      }, 5000);
+
+      return notification;
+    } catch (error) {
+      console.error('显示通知失败:', error);
+      return null;
+    }
+  }
+
+  static get isSupported(): boolean {
+    return 'Notification' in window;
+  }
+
+  static get currentPermission(): NotificationPermission {
+    if (!('Notification' in window)) {
+      return 'denied';
+    }
+    return Notification.permission;
+  }
 }
 
 const NotificationCenter: React.FC<NotificationCenterProps> = ({
@@ -42,23 +130,58 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [notificationType, setNotificationType] = useState<string>('');
+  const [searchInput, setSearchInput] = useState('');
   const pageSize = 20;
+  
+  // 用于检测新通知的 ref
+  const prevUnreadCountRef = useRef(0);
 
   // 获取未读数量
   const fetchUnreadCount = useCallback(async () => {
     try {
       const data = await notificationApi.getUnreadCount();
-      setUnreadCount(data.unread_count);
+      const newUnreadCount = data.unread_count;
+      
+      // 检测新通知并发送浏览器通知
+      if (prevUnreadCountRef.current > 0 && newUnreadCount > prevUnreadCountRef.current) {
+        // 有新通知
+        try {
+          const notificationsData = await notificationApi.getNotifications(1, 1, true);
+          if (notificationsData.items.length > 0) {
+            const latestNotification = notificationsData.items[0];
+            await BrowserNotificationHelper.showNotification(
+              latestNotification.title,
+              {
+                body: latestNotification.content,
+                tag: latestNotification.id,
+              }
+            );
+          }
+        } catch (e) {
+          console.error('获取最新通知失败:', e);
+        }
+      }
+      
+      setUnreadCount(newUnreadCount);
+      prevUnreadCountRef.current = newUnreadCount;
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
     }
   }, []);
 
-  // 获取通知列表
+  // 获取通知列表（支持搜索和筛选）
   const fetchNotifications = useCallback(async (page: number = 1) => {
     setLoading(true);
     try {
-      const data = await notificationApi.getNotifications(page, pageSize, false);
+      const data = await notificationApi.getNotifications(
+        page, 
+        pageSize, 
+        false,
+        searchKeyword || undefined,
+        notificationType || undefined
+      );
       setNotifications(data.items);
       setTotalCount(data.total);
       setUnreadCount(data.unread_count);
@@ -69,7 +192,14 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [pageSize]);
+  }, [pageSize, searchKeyword, notificationType]);
+
+  // 请求浏览器通知权限
+  useEffect(() => {
+    if (BrowserNotificationHelper.isSupported) {
+      BrowserNotificationHelper.requestPermission();
+    }
+  }, []);
 
   // 轮询未读数量（60 秒）
   useEffect(() => {
@@ -90,6 +220,20 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       fetchNotifications();
     }
   }, [visible, fetchNotifications]);
+
+  // 搜索处理
+  const handleSearch = useCallback(() => {
+    setSearchKeyword(searchInput);
+    setCurrentPage(1);
+    fetchNotifications(1);
+  }, [searchInput, fetchNotifications]);
+
+  // 类型筛选处理
+  const handleTypeChange = useCallback((value: string) => {
+    setNotificationType(value);
+    setCurrentPage(1);
+    fetchNotifications(1);
+  }, [fetchNotifications]);
 
   // 标记为已读
   const handleMarkAsRead = async (notificationId: string) => {
@@ -210,6 +354,31 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
           )
         }
       >
+        {/* 搜索和筛选区域 - Story 8.5 */}
+        <div style={{ marginBottom: 16 }}>
+          {/* 搜索框 */}
+          <Input.Search
+            data-testid="search-input"
+            placeholder="搜索通知..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onSearch={handleSearch}
+            style={{ marginBottom: 12 }}
+            allowClear
+            enterButton={<SearchOutlined />}
+          />
+          
+          {/* 类型筛选 */}
+          <Select
+            data-testid="type-filter"
+            value={notificationType}
+            onChange={handleTypeChange}
+            style={{ width: '100%' }}
+            options={NOTIFICATION_TYPES}
+            placeholder="按类型筛选"
+          />
+        </div>
+
         <Spin spinning={loading}>
           {notifications.length > 0 ? (
             <>
@@ -286,7 +455,23 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
               )}
             </>
           ) : (
-            <Empty description="暂无通知" />
+            /* 优化空状态 - Story 8.5 */
+            <Empty
+              data-testid="empty"
+              image={<InboxOutlined style={{ fontSize: 64, color: '#ccc' }} />}
+              description={
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
+                    {searchKeyword || notificationType ? '没有找到匹配的通知' : '暂无通知'}
+                  </p>
+                  <p style={{ fontSize: 12, color: '#999' }}>
+                    {searchKeyword || notificationType 
+                      ? '试试调整搜索条件或清除筛选' 
+                      : '有新通知时会在这里显示'}
+                  </p>
+                </div>
+              }
+            />
           )}
         </Spin>
       </Drawer>

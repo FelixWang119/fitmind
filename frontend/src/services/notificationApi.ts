@@ -69,10 +69,19 @@ const notificationApi = {
   getNotifications: async (
     page: number = 1,
     page_size: number = 20,
-    unread_only: boolean = false
+    unread_only: boolean = false,
+    search?: string,
+    notification_type?: string
   ): Promise<NotificationListResponse> => {
+    const params: Record<string, any> = { page, page_size, unread_only };
+    if (search) {
+      params.search = search;
+    }
+    if (notification_type) {
+      params.notification_type = notification_type;
+    }
     const response = await api.get('/notifications', {
-      params: { page, page_size, unread_only },
+      params,
     });
     return response.data;
   },

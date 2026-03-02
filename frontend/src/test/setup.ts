@@ -70,3 +70,21 @@ Object.defineProperty(window, 'sessionStorage', {
 
 // Mock fetch
 global.fetch = jest.fn();
+
+// Mock dayjs
+jest.mock('dayjs', () => {
+  const mockDayjs = jest.fn((date?: any) => {
+    return {
+      fromNow: () => '2小时前',
+      format: (format?: string) => '2026-03-02',
+      toISOString: () => new Date().toISOString(),
+    };
+  });
+  
+  mockDayjs.extend = jest.fn();
+  mockDayjs.locale = jest.fn();
+  
+  return mockDayjs;
+});
+
+jest.mock('dayjs/plugin/relativeTime', () => ({}));
