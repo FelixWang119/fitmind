@@ -29,7 +29,7 @@ export interface UnreadCountResponse {
 }
 
 export interface NotificationSettings {
-  id: string;
+  id: string;  // UUID from backend serialized as string
   user_id: number;
   enabled: boolean;
   do_not_disturb_enabled: boolean;

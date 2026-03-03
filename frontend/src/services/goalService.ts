@@ -3,9 +3,7 @@
  * Story 2.2: 目标创建与追踪
  */
 
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+import api from '@/api/client';
 
 // Goal Types
 export type GoalType = 'weight' | 'exercise' | 'diet' | 'habit';
@@ -64,24 +62,12 @@ export interface GoalRecommendation {
 }
 
 // API Functions
-const getAuthHeader = () => {
-  const token = localStorage.getItem('access_token');
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-};
-
 export const goalService = {
   /**
    * 获取所有目标推荐
    */
   getRecommendations: async (): Promise<any> => {
-    const response = await axios.get(
-      `${API_BASE_URL}/goals/recommendations`,
-      getAuthHeader()
-    );
+    const response = await api.client.get('/goals/recommendations');
     return response.data;
   },
 
@@ -89,10 +75,7 @@ export const goalService = {
    * 获取指定类型的目标推荐
    */
   getRecommendationByType: async (goalType: GoalType): Promise<GoalRecommendation> => {
-    const response = await axios.get(
-      `${API_BASE_URL}/goals/recommendations/${goalType}`,
-      getAuthHeader()
-    );
+    const response = await api.client.get(`/goals/recommendations/${goalType}`);
     return response.data;
   },
 
@@ -100,11 +83,7 @@ export const goalService = {
    * 创建目标
    */
   createGoal: async (goal: GoalCreate): Promise<Goal> => {
-    const response = await axios.post(
-      `${API_BASE_URL}/goals`,
-      goal,
-      getAuthHeader()
-    );
+    const response = await api.client.post('/goals', goal);
     return response.data;
   },
 
@@ -112,14 +91,11 @@ export const goalService = {
    * 获取目标列表
    */
   getGoals: async (status?: GoalStatus, goalType?: GoalType): Promise<Goal[]> => {
-    const params = new URLSearchParams();
-    if (status) params.append('status', status);
-    if (goalType) params.append('goal_type', goalType);
+    const params: Record<string, string> = {};
+    if (status) params.status = status;
+    if (goalType) params.goal_type = goalType;
     
-    const response = await axios.get(
-      `${API_BASE_URL}/goals${params.toString() ? '?' + params.toString() : ''}`,
-      getAuthHeader()
-    );
+    const response = await api.client.get('/goals', { params });
     return response.data;
   },
 
@@ -127,10 +103,7 @@ export const goalService = {
    * 获取目标详情
    */
   getGoal: async (goalId: number): Promise<Goal> => {
-    const response = await axios.get(
-      `${API_BASE_URL}/goals/${goalId}`,
-      getAuthHeader()
-    );
+    const response = await api.client.get(`/goals/${goalId}`);
     return response.data;
   },
 
@@ -138,11 +111,7 @@ export const goalService = {
    * 更新目标
    */
   updateGoal: async (goalId: number, goal: GoalUpdate): Promise<Goal> => {
-    const response = await axios.patch(
-      `${API_BASE_URL}/goals/${goalId}`,
-      goal,
-      getAuthHeader()
-    );
+    const response = await api.client.patch(`/goals/${goalId}`, goal);
     return response.data;
   },
 
@@ -150,21 +119,14 @@ export const goalService = {
    * 删除目标
    */
   deleteGoal: async (goalId: number): Promise<void> => {
-    await axios.delete(
-      `${API_BASE_URL}/goals/${goalId}`,
-      getAuthHeader()
-    );
+    await api.client.delete(`/goals/${goalId}`);
   },
 
   /**
    * 记录进度
    */
   recordProgress: async (goalId: number, progress: GoalProgressCreate): Promise<GoalProgress> => {
-    const response = await axios.post(
-      `${API_BASE_URL}/goals/${goalId}/progress`,
-      progress,
-      getAuthHeader()
-    );
+    const response = await api.client.post(`/goals/${goalId}/progress`, progress);
     return response.data;
   },
 
@@ -172,10 +134,7 @@ export const goalService = {
    * 获取目标进度历史
    */
   getGoalProgress: async (goalId: number, days: number = 30): Promise<GoalProgress[]> => {
-    const response = await axios.get(
-      `${API_BASE_URL}/goals/${goalId}/progress?days=${days}`,
-      getAuthHeader()
-    );
+    const response = await api.client.get(`/goals/${goalId}/progress`, { params: { days } });
     return response.data;
   },
 
@@ -183,11 +142,7 @@ export const goalService = {
    * 更新目标状态
    */
   updateGoalStatus: async (goalId: number, status: GoalStatus): Promise<Goal> => {
-    const response = await axios.patch(
-      `${API_BASE_URL}/goals/${goalId}/status?new_status=${status}`,
-      {},
-      getAuthHeader()
-    );
+    const response = await api.client.patch(`/goals/${goalId}/status?new_status=${status}`, {});
     return response.data;
   },
 
@@ -195,10 +150,7 @@ export const goalService = {
    * 获取目标历史
    */
   getGoalHistory: async (goalId: number): Promise<any[]> => {
-    const response = await axios.get(
-      `${API_BASE_URL}/goals/${goalId}/history`,
-      getAuthHeader()
-    );
+    const response = await api.client.get(`/goals/${goalId}/history`);
     return response.data;
   },
 };

@@ -3,9 +3,7 @@
  * Story 3.1: 热量平衡三栏展示
  */
 
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+import api from '@/api/client';
 
 // Calorie Balance Types
 export interface CalorieBalanceData {
@@ -39,10 +37,7 @@ export interface CalorieBalanceHistory {
  */
 export const getCalorieBalance = async (date?: string): Promise<CalorieBalanceData> => {
   const params = date ? { date } : {};
-  const response = await axios.get<CalorieBalanceData>(
-    `${API_BASE_URL}/calorie-balance`,
-    { params }
-  );
+  const response = await api.client.get('/calorie-balance', { params });
   return response.data;
 };
 
@@ -52,10 +47,7 @@ export const getCalorieBalance = async (date?: string): Promise<CalorieBalanceDa
  * @returns 历史数据数组
  */
 export const getCalorieBalanceHistory = async (days: number = 7): Promise<CalorieBalanceHistory> => {
-  const response = await axios.get<CalorieBalanceHistory>(
-    `${API_BASE_URL}/calorie-balance/history`,
-    { params: { days } }
-  );
+  const response = await api.client.get('/calorie-balance/history', { params: { days } });
   return response.data;
 };
 

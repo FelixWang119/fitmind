@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+import api from '@/api/client';
 
 export interface RegisterData {
   email: string;
@@ -31,31 +29,22 @@ export const authService = {
    * 用户注册
    */
   register: async (data: RegisterData): Promise<AuthResponse> => {
-    const response = await axios.post(`${API_BASE_URL}/auth/register`, data);
+    const response = await api.client.post('/auth/register', data);
     return response.data;
   },
 
   /**
-   * 用户登录
+   * 用户登录 - 使用 api client 内置方法
    */
   login: async (data: LoginData): Promise<AuthResponse> => {
-    const formData = new FormData();
-    formData.append('username', data.username);
-    formData.append('password', data.password);
-
-    const response = await axios.post(`${API_BASE_URL}/auth/login`, formData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
-    return response.data;
+    return await api.login(data.username, data.password);
   },
 
   /**
    * 获取当前用户信息
    */
   getCurrentUser: async (token: string) => {
-    const response = await axios.get(`${API_BASE_URL}/auth/me`, {
+    const response = await api.client.get('/auth/me', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -71,8 +60,8 @@ export const authService = {
     currentPassword: string,
     newPassword: string
   ) => {
-    const response = await axios.post(
-      `${API_BASE_URL}/auth/change-password`,
+    const response = await api.client.post(
+      '/auth/change-password',
       null,
       {
         params: {
