@@ -330,3 +330,9 @@ cython_debug/
 # Git worktrees
 .worktrees/
 worktrees/
+
+# Test results and reports
+frontend/test-results/
+frontend/playwright-report/
+*.backup
+*.backup.*
