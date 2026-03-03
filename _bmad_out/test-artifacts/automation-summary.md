@@ -1,7 +1,7 @@
 ---
-stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-03c-aggregate', 'step-04-validate-and-summarize']
-lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-25T14:45:00Z'
+stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-03c-aggregate', 'step-04-validate-and-summarize', 'step-02-identify-targets-notification']
+lastStep: 'step-02-identify-targets-notification'
+lastSaved: '2026-03-02T12:50:00Z'
 ---
 
 # Test Automation Expansion Summary
@@ -425,3 +425,143 @@ Next steps:
 1. Run tests locally to validate: `npx playwright test`
 2. Review test quality: Run `*test-review` workflow
 3. Create traceability matrix: Run `*trace` workflow
+
+---
+
+# NEW: Notification Center Test Automation (2026-03-02)
+
+## Step 2: Identify Automation Targets - Notification Center
+
+### Test Targets Identified
+
+Based on Epic 8 implementation, the following components need test automation coverage:
+
+| Component | File Path | Type | Priority |
+|-----------|-----------|------|----------|
+| NotificationCenter | `frontend/src/components/NotificationCenter/index.tsx` | Component | P0 |
+| Header Integration | `frontend/src/components/layout/Header.tsx` | Component | P0 |
+| Notification Settings Page | `frontend/src/pages/NotificationSettings.tsx` | Page | P1 |
+| Notification API | `backend/app/api/v1/endpoints/notifications.py` | API | P0 |
+| Habit Reminder Task | `backend/app/schedulers/tasks/notification_tasks.py` | Task | P1 |
+| Milestone Service | `backend/app/services/milestone_service.py` | Service | P1 |
+
+### Test Levels Selection
+
+| Level | Coverage Focus | Priority |
+|-------|----------------|----------|
+| **E2E** | User flow: View notifications → Mark as read → Delete | P0 |
+| **E2E** | User flow: Notification settings → Toggle switches | P1 |
+| **Component** | NotificationCenter rendering, badge count, drawer behavior | P0 |
+| **Component** | Pagination, search, filter functionality | P1 |
+| **API** | GET/POST/PUT notifications endpoints | P0 |
+| **API** | Unread count, mark as read, delete | P0 |
+| **API** | Notification settings CRUD | P1 |
+| **Unit** | Habit reminder task logic | P1 |
+| **Unit** | Milestone detection logic | P1 |
+
+### Coverage Plan (Critical-Paths Focus)
+
+**P0 - Critical:**
+1. E2E: View notification drawer and list
+2. E2E: Mark single notification as read
+3. E2E: Mark all notifications as read
+4. Component: Unread badge displays correctly
+5. API: Get notifications (paginated)
+6. API: Get unread count
+7. API: Mark as read
+
+**P1 - Important:**
+1. E2E: Notification settings toggle
+2. Component: Search functionality
+3. Component: Filter by type
+4. API: Delete notification
+5. API: Update notification settings
+6. Unit: Habit reminder template generation
+7. Unit: Milestone detection (streak, total records)
+
+**P2 - Secondary:**
+1. Component: Pagination navigation
+2. Component: Empty state display
+3. Unit: Do Not Disturb check
+4. Unit: Daily limit check
+
+### Execution Mode
+
+**Mode:** BMad-Integrated (Story 8.1-8.5 acceptance criteria available)
+
+---
+
+## Step 3: Test Generation - Notification Center
+
+### Tests Generated
+
+| Test File | Type | Tests | Priority |
+|-----------|------|-------|----------|
+| `frontend/tests/e2e/notification-center.spec.ts` | E2E | 14 | P0/P1/P2 |
+| `backend/tests/api/test_notifications_automated.py` | API | 14 | P0/P1 |
+
+### E2E Test Coverage (notification-center.spec.ts)
+
+**P0 - Critical (7 tests):**
+- Display notification bell in header
+- Show unread count badge
+- Open notification drawer
+- Display notification list
+- Mark single notification as read
+- Mark all notifications as read
+- Delete notification
+
+**P1 - Important (5 tests):**
+- Display search input
+- Display type filter dropdown
+- Filter notifications by type
+- Navigate pagination
+- Access notification settings page
+
+**P2 - Edge Cases (2 tests):**
+- Empty state handling
+- Long content handling
+
+### API Test Coverage (test_notifications_automated.py)
+
+**P0 - Critical (7 tests):**
+- GET /notifications - auth required
+- GET /notifications - success
+- GET /notifications/unread-count
+- POST /notifications/{id}/read
+- POST /notifications/mark-all-read
+- GET /notifications/settings - auth required
+- GET /notifications/settings - success
+
+**P1 - Important (7 tests):**
+- GET /notifications - pagination
+- GET /notifications - unread_only filter
+- DELETE /notifications/{id}
+- PUT /notifications/settings - update settings
+
+---
+
+## Summary
+
+### New Tests Created
+
+| Test Level | Count | Files |
+|------------|-------|-------|
+| E2E | 14 | 1 |
+| API | 14 | 1 |
+
+### Total Project Tests (including previous)
+
+| Test Level | Count |
+|------------|-------|
+| E2E | 32 |
+| API | 30 |
+| Unit | 24 |
+
+### Next Steps
+
+1. Run E2E tests: `npx playwright test frontend/tests/e2e/notification-center.spec.ts`
+2. Run API tests: `pytest backend/tests/api/test_notifications_automated.py -v`
+3. Review test quality
+
+---
